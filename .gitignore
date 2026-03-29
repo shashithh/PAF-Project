@@ -1,6 +1,7 @@
 .env
 *.env
 smart-campus/backend/.env
+backend/.env
 node_modules/
 target/
 uploads/
