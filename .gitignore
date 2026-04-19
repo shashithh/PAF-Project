@@ -1,24 +1,26 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# ── Node / Frontend ─────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env*.local
+frontend/*.local
 
-node_modules
-dist
-dist-ssr
-*.local
+# ── Maven / Backend ──────────────────────────────────────────
+backend/target/
+backend/.mvn/repository/
+*.class
+*.jar
+*.war
 
-# Editor directories and files
+# ── IDE ──────────────────────────────────────────────────────
+.idea/
+*.iml
 .vscode/*
 !.vscode/extensions.json
-.idea
+
+# ── OS ───────────────────────────────────────────────────────
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
