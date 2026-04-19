@@ -6,22 +6,27 @@ import React, {
   useCallback,
   useMemo,
 } from 'react'
-import { fetchBookings, cancelBooking as apiCancelBooking } from '../services/bookingService.js'
+import {
+  fetchBookings,
+  cancelBooking      as apiCancelBooking,
+  updateBookingStatus as apiUpdateStatus,
+} from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Action types
    ══════════════════════════════════════ */
 export const ACTIONS = {
-  LOAD_START:          'LOAD_START',
-  LOAD_SUCCESS:        'LOAD_SUCCESS',
-  LOAD_ERROR:          'LOAD_ERROR',
-  ADD_BOOKING:         'ADD_BOOKING',
-  ADD_BOOKING_ERROR:   'ADD_BOOKING_ERROR',
-  UPDATE_STATUS:       'UPDATE_STATUS',
-  CANCEL_BOOKING:      'CANCEL_BOOKING',       // optimistic cancel
-  CANCEL_BOOKING_ERROR:'CANCEL_BOOKING_ERROR', // rollback on failure
-  SHOW_TOAST:          'SHOW_TOAST',
-  HIDE_TOAST:          'HIDE_TOAST',
+  LOAD_START:           'LOAD_START',
+  LOAD_SUCCESS:         'LOAD_SUCCESS',
+  LOAD_ERROR:           'LOAD_ERROR',
+  ADD_BOOKING:          'ADD_BOOKING',
+  ADD_BOOKING_ERROR:    'ADD_BOOKING_ERROR',
+  UPDATE_STATUS:        'UPDATE_STATUS',        // optimistic approve/reject
+  UPDATE_STATUS_ERROR:  'UPDATE_STATUS_ERROR',  // rollback on failure
+  CANCEL_BOOKING:       'CANCEL_BOOKING',       // optimistic cancel
+  CANCEL_BOOKING_ERROR: 'CANCEL_BOOKING_ERROR', // rollback on failure
+  SHOW_TOAST:           'SHOW_TOAST',
+  HIDE_TOAST:           'HIDE_TOAST',
 }
 
 /* ══════════════════════════════════════
@@ -30,9 +35,9 @@ export const ACTIONS = {
 const initialState = {
   bookings:    [],
   loading:     true,
-  error:       null,          // load error
-  submitError: null,          // booking creation error
-  toast:       null,          // { message, type: 'success' | 'error' }
+  error:       null,
+  submitError: null,
+  toast:       null,   // { message, type: 'success' | 'error' }
 }
 
 /* ══════════════════════════════════════
@@ -51,26 +56,30 @@ function bookingReducer(state, action) {
       return { ...state, loading: false, error: action.payload }
 
     case ACTIONS.ADD_BOOKING:
-      return {
-        ...state,
-        submitError: null,
-        bookings: [action.payload, ...state.bookings],
-      }
+      return { ...state, submitError: null, bookings: [action.payload, ...state.bookings] }
 
     case ACTIONS.ADD_BOOKING_ERROR:
       return { ...state, submitError: action.payload }
 
+    // Optimistic approve / reject
     case ACTIONS.UPDATE_STATUS:
       return {
         ...state,
         bookings: state.bookings.map((b) =>
-          b.id === action.payload.id
-            ? { ...b, status: action.payload.status }
-            : b
+          b.id === action.payload.id ? { ...b, status: action.payload.status } : b
         ),
       }
 
-    // Optimistic cancel — immediately marks the booking as CANCELLED in UI
+    // Rollback approve / reject
+    case ACTIONS.UPDATE_STATUS_ERROR:
+      return {
+        ...state,
+        bookings: state.bookings.map((b) =>
+          b.id === action.payload.id ? { ...b, status: action.payload.previousStatus } : b
+        ),
+      }
+
+    // Optimistic cancel
     case ACTIONS.CANCEL_BOOKING:
       return {
         ...state,
@@ -79,7 +88,7 @@ function bookingReducer(state, action) {
         ),
       }
 
-    // Rollback — restores the previous status if the API call failed
+    // Rollback cancel
     case ACTIONS.CANCEL_BOOKING_ERROR:
       return {
         ...state,
@@ -112,74 +121,84 @@ export function BookingProvider({ children }) {
 
   // ── Load bookings on mount ──────────────────────────────────
   useEffect(() => {
-    let cancelled = false
+    let aborted = false
     dispatch({ type: ACTIONS.LOAD_START })
 
     fetchBookings()
-      .then((data) => {
-        if (!cancelled)
-          dispatch({ type: ACTIONS.LOAD_SUCCESS, payload: data })
-      })
-      .catch((err) => {
-        if (!cancelled)
-          dispatch({ type: ACTIONS.LOAD_ERROR, payload: err.message })
-      })
+      .then((data) => { if (!aborted) dispatch({ type: ACTIONS.LOAD_SUCCESS, payload: data }) })
+      .catch((err)  => { if (!aborted) dispatch({ type: ACTIONS.LOAD_ERROR,   payload: err.message }) })
 
-    return () => { cancelled = true }
+    return () => { aborted = true }
   }, [])
 
   // ── Toast auto-dismiss ──────────────────────────────────────
   useEffect(() => {
     if (!state.toast) return
-    const timer = setTimeout(
-      () => dispatch({ type: ACTIONS.HIDE_TOAST }),
-      3000
-    )
-    return () => clearTimeout(timer)
+    const t = setTimeout(() => dispatch({ type: ACTIONS.HIDE_TOAST }), 3000)
+    return () => clearTimeout(t)
   }, [state.toast])
 
   // ── Action creators ─────────────────────────────────────────
 
-  /**
-   * Called by useBookingForm after the service resolves.
-   * Receives the persisted booking returned by the server.
-   */
   const addBooking = useCallback((booking) => {
     dispatch({ type: ACTIONS.ADD_BOOKING, payload: booking })
   }, [])
 
-  /**
-   * Called by useBookingForm if the service rejects.
-   */
   const reportSubmitError = useCallback((message) => {
     dispatch({ type: ACTIONS.ADD_BOOKING_ERROR, payload: message })
   }, [])
 
-  const updateBookingStatus = useCallback((id, status) => {
+  /**
+   * Approve or reject a booking (admin).
+   * Optimistic update — rolls back and shows an error toast if the API fails.
+   */
+  const updateBookingStatus = useCallback(async (id, status) => {
+    const booking        = state.bookings.find((b) => b.id === id)
+    const previousStatus = booking?.status
+    if (!previousStatus) return
+
+    // 1. Optimistic flip
     dispatch({ type: ACTIONS.UPDATE_STATUS, payload: { id, status } })
-  }, [])
+
+    try {
+      await apiUpdateStatus(id, status)
+      dispatch({
+        type: ACTIONS.SHOW_TOAST,
+        payload: {
+          message: `Booking for ${booking.resourceName} ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
+          type:    status === 'APPROVED' ? 'success' : 'error',
+        },
+      })
+    } catch (err) {
+      // 2. Rollback
+      dispatch({ type: ACTIONS.UPDATE_STATUS_ERROR, payload: { id, previousStatus } })
+      dispatch({
+        type: ACTIONS.SHOW_TOAST,
+        payload: {
+          message: err?.message ?? 'Action failed. Please try again.',
+          type: 'error',
+        },
+      })
+    }
+  }, [state.bookings])
 
   /**
-   * Cancel a booking optimistically, then confirm with the service.
-   * Rolls back the UI if the API call fails.
+   * Cancel a booking (user).
+   * Optimistic update — rolls back and shows an error toast if the API fails.
    */
   const cancelBooking = useCallback(async (id, userId) => {
-    // Find the current status before we change it (needed for rollback)
     const previousStatus = state.bookings.find((b) => b.id === id)?.status
     if (!previousStatus) return
 
-    // 1. Optimistic update — card flips to CANCELLED immediately
+    // 1. Optimistic flip
     dispatch({ type: ACTIONS.CANCEL_BOOKING, payload: id })
 
     try {
       await apiCancelBooking(id, userId)
       dispatch({ type: ACTIONS.SHOW_TOAST, payload: { message: 'Booking cancelled.', type: 'success' } })
     } catch (err) {
-      // 2. Rollback — restore the previous status
-      dispatch({
-        type: ACTIONS.CANCEL_BOOKING_ERROR,
-        payload: { id, previousStatus },
-      })
+      // 2. Rollback
+      dispatch({ type: ACTIONS.CANCEL_BOOKING_ERROR, payload: { id, previousStatus } })
       dispatch({
         type: ACTIONS.SHOW_TOAST,
         payload: {
@@ -216,32 +235,25 @@ export function BookingProvider({ children }) {
   // ── Context value ───────────────────────────────────────────
   const value = useMemo(
     () => ({
-      bookings:     state.bookings,
-      loading:      state.loading,
-      error:        state.error,
-      submitError:  state.submitError,
-      toast:        state.toast,
+      bookings:           state.bookings,
+      loading:            state.loading,
+      error:              state.error,
+      submitError:        state.submitError,
+      toast:              state.toast,
       stats,
       getMyBookings,
       addBooking,
       reportSubmitError,
-      cancelBooking,
       updateBookingStatus,
+      cancelBooking,
       notify,
     }),
     [
-      state.bookings,
-      state.loading,
-      state.error,
-      state.submitError,
-      state.toast,
-      stats,
-      getMyBookings,
-      addBooking,
-      reportSubmitError,
-      cancelBooking,
-      updateBookingStatus,
-      notify,
+      state.bookings, state.loading, state.error,
+      state.submitError, state.toast,
+      stats, getMyBookings,
+      addBooking, reportSubmitError,
+      updateBookingStatus, cancelBooking, notify,
     ]
   )
 
@@ -257,8 +269,6 @@ export function BookingProvider({ children }) {
    ══════════════════════════════════════ */
 export function useBookingContext() {
   const ctx = useContext(BookingContext)
-  if (!ctx) {
-    throw new Error('useBookingContext must be used inside <BookingProvider>')
-  }
+  if (!ctx) throw new Error('useBookingContext must be used inside <BookingProvider>')
   return ctx
 }

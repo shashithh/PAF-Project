@@ -39,30 +39,35 @@ function calcDuration(start, end) {
   return `${m}m`
 }
 
-/**
- * Returns a temporal tag for user-facing cards.
- * { label, className } — e.g. "Today", "Upcoming", "Past"
- */
 function getTemporalTag(dateStr) {
   if (!dateStr) return null
-  const today    = new Date().toISOString().split('T')[0]
-  if (dateStr === today)  return { label: 'Today',    className: 'tag-today'    }
-  if (dateStr  > today)   return { label: 'Upcoming', className: 'tag-upcoming' }
-  return                         { label: 'Past',     className: 'tag-past'     }
+  const today = new Date().toISOString().split('T')[0]
+  if (dateStr === today) return { label: 'Today',    className: 'tag-today'    }
+  if (dateStr  > today)  return { label: 'Upcoming', className: 'tag-upcoming' }
+  return                        { label: 'Past',     className: 'tag-past'     }
 }
 
 /* ── Component ─────────────────────────────────────────────── */
 function BookingCard({ booking, showAdminControls = false, currentUserId }) {
-  const { cancelBooking, updateBookingStatus, notify } = useBookingContext()
+  const { cancelBooking, updateBookingStatus } = useBookingContext()
+
+  // Cancel flow
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling,    setCancelling]    = useState(false)
 
-  const config       = STATUS_CONFIG[booking.status] || {}
-  const canCancel    = booking.status === 'PENDING' || booking.status === 'APPROVED'
-  const isTerminal   = booking.status === 'REJECTED' || booking.status === 'CANCELLED'
-  const duration     = calcDuration(booking.startTime, booking.endTime)
-  const resIcon      = RESOURCE_ICONS[booking.resourceName] ?? '📦'
-  const temporalTag  = !showAdminControls ? getTemporalTag(booking.date) : null
+  // Approve / reject flow
+  const [confirmReject, setConfirmReject] = useState(false)
+  const [approving,     setApproving]     = useState(false)
+  const [rejecting,     setRejecting]     = useState(false)
+
+  const config     = STATUS_CONFIG[booking.status] || {}
+  const canCancel  = booking.status === 'PENDING' || booking.status === 'APPROVED'
+  const isTerminal = booking.status === 'REJECTED' || booking.status === 'CANCELLED'
+  const duration   = calcDuration(booking.startTime, booking.endTime)
+  const resIcon    = RESOURCE_ICONS[booking.resourceName] ?? '📦'
+  const temporalTag = !showAdminControls ? getTemporalTag(booking.date) : null
+
+  // ── Handlers ──────────────────────────────────────────────
 
   const handleCancelConfirm = async () => {
     setCancelling(true)
@@ -71,20 +76,27 @@ function BookingCard({ booking, showAdminControls = false, currentUserId }) {
     setCancelling(false)
   }
 
-  const handleApprove = () => {
-    updateBookingStatus(booking.id, 'APPROVED')
-    notify(`Booking for ${booking.resourceName} approved.`)
+  const handleApprove = async () => {
+    setApproving(true)
+    await updateBookingStatus(booking.id, 'APPROVED')
+    setApproving(false)
   }
 
-  const handleReject = () => {
-    updateBookingStatus(booking.id, 'REJECTED')
-    notify(`Booking for ${booking.resourceName} rejected.`, 'error')
+  const handleRejectConfirm = async () => {
+    setRejecting(true)
+    setConfirmReject(false)
+    await updateBookingStatus(booking.id, 'REJECTED')
+    setRejecting(false)
   }
+
+  // Any action in-flight — disable all buttons on this card
+  const busy = cancelling || approving || rejecting
 
   return (
     <article
-      className={`booking-card ${config.accent ?? ''} ${isTerminal ? 'card-terminal' : ''}`}
+      className={`booking-card ${config.accent ?? ''} ${isTerminal ? 'card-terminal' : ''} ${busy ? 'card-busy' : ''}`}
       aria-label={`${booking.resourceName}, ${config.label}`}
+      aria-busy={busy}
     >
       {/* ── Accent bar ── */}
       <div className="card-accent-bar" aria-hidden="true" />
@@ -142,48 +154,34 @@ function BookingCard({ booking, showAdminControls = false, currentUserId }) {
 
       {/* ── Footer ── */}
       <div className="card-footer">
-        {/* Submitted date — more useful to users than a raw ID */}
-        {booking.createdAt ? (
-          <span className="card-submitted" aria-label="Submitted on">
-            Submitted {new Date(booking.createdAt).toLocaleDateString('en-US', {
-              month: 'short', day: 'numeric',
-            })}
-          </span>
-        ) : (
-          <span className="card-id" aria-label={`Booking ID: ${booking.id}`}>
-            #{booking.id}
-          </span>
-        )}
+        <span className="card-submitted" aria-label="Submitted on">
+          {booking.createdAt
+            ? `Submitted ${new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+            : `#${booking.id}`
+          }
+        </span>
 
         <div className="card-actions">
-          {/* User: cancel with confirm step — only on active bookings */}
+
+          {/* ── User: cancel ── */}
           {!showAdminControls && canCancel && (
             cancelling ? (
-              <span className="cancel-loading" aria-live="polite">
-                <span className="spinner-cancel" aria-hidden="true" /> Cancelling…
+              <span className="action-loading" aria-live="polite">
+                <span className="spinner-sm" aria-hidden="true" /> Cancelling…
               </span>
             ) : confirmCancel ? (
               <div className="confirm-row" role="group" aria-label="Confirm cancellation">
-                <span className="confirm-label">Cancel?</span>
-                <button
-                  className="btn-confirm-yes"
-                  onClick={handleCancelConfirm}
-                  aria-label="Yes, cancel this booking"
-                >
-                  Yes
-                </button>
-                <button
-                  className="btn-confirm-no"
-                  onClick={() => setConfirmCancel(false)}
-                  aria-label="No, keep this booking"
-                >
-                  No
-                </button>
+                <span className="confirm-label">Cancel booking?</span>
+                <button className="btn-confirm-yes" onClick={handleCancelConfirm}
+                  aria-label="Yes, cancel this booking">Yes</button>
+                <button className="btn-confirm-no" onClick={() => setConfirmCancel(false)}
+                  aria-label="No, keep this booking">No</button>
               </div>
             ) : (
               <button
                 className="btn-cancel"
                 onClick={() => setConfirmCancel(true)}
+                disabled={busy}
                 aria-label={`Cancel booking for ${booking.resourceName}`}
               >
                 Cancel
@@ -191,31 +189,62 @@ function BookingCard({ booking, showAdminControls = false, currentUserId }) {
             )
           )}
 
-          {/* Terminal state label — replaces empty action area */}
+          {/* Terminal state label */}
           {!showAdminControls && isTerminal && (
             <span className="card-terminal-label">
               {booking.status === 'CANCELLED' ? 'You cancelled this' : 'Not approved'}
             </span>
           )}
 
-          {/* Admin: approve / reject */}
+          {/* ── Admin: approve / reject ── */}
           {showAdminControls && booking.status === 'PENDING' && (
-            <>
-              <button
-                className="btn-approve"
-                onClick={handleApprove}
-                aria-label={`Approve booking for ${booking.resourceName}`}
-              >
-                ✓ Approve
-              </button>
-              <button
-                className="btn-reject"
-                onClick={handleReject}
-                aria-label={`Reject booking for ${booking.resourceName}`}
-              >
-                ✕ Reject
-              </button>
-            </>
+            approving ? (
+              <span className="action-loading action-loading-approve" aria-live="polite">
+                <span className="spinner-sm spinner-sm-approve" aria-hidden="true" /> Approving…
+              </span>
+            ) : rejecting ? (
+              <span className="action-loading action-loading-reject" aria-live="polite">
+                <span className="spinner-sm spinner-sm-reject" aria-hidden="true" /> Rejecting…
+              </span>
+            ) : confirmReject ? (
+              <div className="confirm-row" role="group" aria-label="Confirm rejection">
+                <span className="confirm-label">Reject booking?</span>
+                <button className="btn-confirm-yes" onClick={handleRejectConfirm}
+                  aria-label="Yes, reject this booking">Yes</button>
+                <button className="btn-confirm-no" onClick={() => setConfirmReject(false)}
+                  aria-label="No, keep pending">No</button>
+              </div>
+            ) : (
+              <>
+                <button
+                  className="btn-approve"
+                  onClick={handleApprove}
+                  disabled={busy}
+                  aria-label={`Approve booking for ${booking.resourceName}`}
+                >
+                  ✓ Approve
+                </button>
+                <button
+                  className="btn-reject"
+                  onClick={() => setConfirmReject(true)}
+                  disabled={busy}
+                  aria-label={`Reject booking for ${booking.resourceName}`}
+                >
+                  ✕ Reject
+                </button>
+              </>
+            )
+          )}
+
+          {/* Admin: already-actioned label */}
+          {showAdminControls && booking.status === 'APPROVED' && (
+            <span className="card-actioned-label card-actioned-approved">✅ Approved</span>
+          )}
+          {showAdminControls && booking.status === 'REJECTED' && (
+            <span className="card-actioned-label card-actioned-rejected">❌ Rejected</span>
+          )}
+          {showAdminControls && booking.status === 'CANCELLED' && (
+            <span className="card-actioned-label">🚫 Cancelled by user</span>
           )}
         </div>
       </div>

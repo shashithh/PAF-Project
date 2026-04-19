@@ -285,7 +285,8 @@
 .btn-confirm-no:hover { opacity: .8; }
 
 /* ── Cancel loading state ── */
-.cancel-loading {
+.cancel-loading,
+.action-loading {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -294,7 +295,11 @@
   font-style: italic;
 }
 
-.spinner-cancel {
+.action-loading-approve { color: #166534; }
+.action-loading-reject  { color: #991b1b; }
+
+/* Small inline spinners */
+.spinner-sm {
   width: 12px;
   height: 12px;
   border: 1.5px solid rgba(107, 114, 128, .3);
@@ -304,6 +309,32 @@
   display: inline-block;
   flex-shrink: 0;
 }
+
+.spinner-sm-approve {
+  border-color: rgba(22, 101, 52, .25);
+  border-top-color: #166534;
+}
+
+.spinner-sm-reject {
+  border-color: rgba(153, 27, 27, .25);
+  border-top-color: #991b1b;
+}
+
+/* Card busy state — subtle overlay to signal in-flight */
+.card-busy {
+  pointer-events: none;
+  opacity: .75;
+}
+
+/* Actioned label (admin view — already approved/rejected/cancelled) */
+.card-actioned-label {
+  font-size: .78rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.card-actioned-approved { color: #166534; }
+.card-actioned-rejected { color: #991b1b; }
 
 /* filter-bar rules live in list.css */
 
