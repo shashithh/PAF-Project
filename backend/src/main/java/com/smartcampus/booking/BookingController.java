@@ -65,7 +65,22 @@ public class BookingController {
         return service.create(request);
     }
 
-    /** PATCH /api/bookings/{id}/status — approve / reject / cancel */
+    /**
+     * DELETE /api/bookings/{id}?userId={userId} — cancel a booking
+     *
+     * Uses DELETE semantics: cancelling is the user's way of removing
+     * a booking from their schedule. The userId query param identifies
+     * the requesting user (replace with JWT principal when auth is added).
+     */
+    @DeleteMapping("/{id}")
+    public Booking cancel(
+        @PathVariable Long id,
+        @RequestParam String userId
+    ) {
+        return service.cancel(id, userId);
+    }
+
+    /** PATCH /api/bookings/{id}/status — approve / reject (admin) */
     @PatchMapping("/{id}/status")
     public Booking updateStatus(
         @PathVariable Long id,

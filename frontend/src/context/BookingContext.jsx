@@ -6,20 +6,22 @@ import React, {
   useCallback,
   useMemo,
 } from 'react'
-import { fetchBookings } from '../services/bookingService.js'
+import { fetchBookings, cancelBooking as apiCancelBooking } from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Action types
    ══════════════════════════════════════ */
 export const ACTIONS = {
-  LOAD_START:        'LOAD_START',
-  LOAD_SUCCESS:      'LOAD_SUCCESS',
-  LOAD_ERROR:        'LOAD_ERROR',
-  ADD_BOOKING:       'ADD_BOOKING',
-  ADD_BOOKING_ERROR: 'ADD_BOOKING_ERROR',
-  UPDATE_STATUS:     'UPDATE_STATUS',
-  SHOW_TOAST:        'SHOW_TOAST',
-  HIDE_TOAST:        'HIDE_TOAST',
+  LOAD_START:          'LOAD_START',
+  LOAD_SUCCESS:        'LOAD_SUCCESS',
+  LOAD_ERROR:          'LOAD_ERROR',
+  ADD_BOOKING:         'ADD_BOOKING',
+  ADD_BOOKING_ERROR:   'ADD_BOOKING_ERROR',
+  UPDATE_STATUS:       'UPDATE_STATUS',
+  CANCEL_BOOKING:      'CANCEL_BOOKING',       // optimistic cancel
+  CANCEL_BOOKING_ERROR:'CANCEL_BOOKING_ERROR', // rollback on failure
+  SHOW_TOAST:          'SHOW_TOAST',
+  HIDE_TOAST:          'HIDE_TOAST',
 }
 
 /* ══════════════════════════════════════
@@ -65,6 +67,24 @@ function bookingReducer(state, action) {
           b.id === action.payload.id
             ? { ...b, status: action.payload.status }
             : b
+        ),
+      }
+
+    // Optimistic cancel — immediately marks the booking as CANCELLED in UI
+    case ACTIONS.CANCEL_BOOKING:
+      return {
+        ...state,
+        bookings: state.bookings.map((b) =>
+          b.id === action.payload ? { ...b, status: 'CANCELLED' } : b
+        ),
+      }
+
+    // Rollback — restores the previous status if the API call failed
+    case ACTIONS.CANCEL_BOOKING_ERROR:
+      return {
+        ...state,
+        bookings: state.bookings.map((b) =>
+          b.id === action.payload.id ? { ...b, status: action.payload.previousStatus } : b
         ),
       }
 
@@ -139,6 +159,37 @@ export function BookingProvider({ children }) {
     dispatch({ type: ACTIONS.UPDATE_STATUS, payload: { id, status } })
   }, [])
 
+  /**
+   * Cancel a booking optimistically, then confirm with the service.
+   * Rolls back the UI if the API call fails.
+   */
+  const cancelBooking = useCallback(async (id, userId) => {
+    // Find the current status before we change it (needed for rollback)
+    const previousStatus = state.bookings.find((b) => b.id === id)?.status
+    if (!previousStatus) return
+
+    // 1. Optimistic update — card flips to CANCELLED immediately
+    dispatch({ type: ACTIONS.CANCEL_BOOKING, payload: id })
+
+    try {
+      await apiCancelBooking(id, userId)
+      dispatch({ type: ACTIONS.SHOW_TOAST, payload: { message: 'Booking cancelled.', type: 'success' } })
+    } catch (err) {
+      // 2. Rollback — restore the previous status
+      dispatch({
+        type: ACTIONS.CANCEL_BOOKING_ERROR,
+        payload: { id, previousStatus },
+      })
+      dispatch({
+        type: ACTIONS.SHOW_TOAST,
+        payload: {
+          message: err?.message ?? 'Could not cancel booking. Please try again.',
+          type: 'error',
+        },
+      })
+    }
+  }, [state.bookings])
+
   const notify = useCallback((message, type = 'success') => {
     dispatch({ type: ACTIONS.SHOW_TOAST, payload: { message, type } })
   }, [])
@@ -174,6 +225,7 @@ export function BookingProvider({ children }) {
       getMyBookings,
       addBooking,
       reportSubmitError,
+      cancelBooking,
       updateBookingStatus,
       notify,
     }),
@@ -187,6 +239,7 @@ export function BookingProvider({ children }) {
       getMyBookings,
       addBooking,
       reportSubmitError,
+      cancelBooking,
       updateBookingStatus,
       notify,
     ]

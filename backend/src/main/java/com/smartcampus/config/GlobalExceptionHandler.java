@@ -1,6 +1,8 @@
 package com.smartcampus.config;
 
 import com.smartcampus.booking.ConflictException;
+import com.smartcampus.booking.ForbiddenException;
+import com.smartcampus.booking.InvalidTransitionException;
 import com.smartcampus.booking.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +39,26 @@ public class GlobalExceptionHandler {
             HttpStatus.NOT_FOUND, ex.getMessage()
         );
         pd.setTitle("Not Found");
+        return pd;
+    }
+
+    /** 403 — user tried to act on someone else's booking */
+    @ExceptionHandler(ForbiddenException.class)
+    public ProblemDetail handleForbidden(ForbiddenException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+            HttpStatus.FORBIDDEN, ex.getMessage()
+        );
+        pd.setTitle("Forbidden");
+        return pd;
+    }
+
+    /** 422 — invalid status transition */
+    @ExceptionHandler(InvalidTransitionException.class)
+    public ProblemDetail handleInvalidTransition(InvalidTransitionException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+            HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage()
+        );
+        pd.setTitle("Invalid Status Transition");
         return pd;
     }
 

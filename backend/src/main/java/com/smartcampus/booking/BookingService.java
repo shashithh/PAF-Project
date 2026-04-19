@@ -3,12 +3,26 @@ package com.smartcampus.booking;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class BookingService {
 
     private final BookingRepository repo;
+
+    /** Statuses a user is allowed to cancel from. */
+    private static final Set<BookingStatus> CANCELLABLE =
+        Set.of(BookingStatus.PENDING, BookingStatus.APPROVED);
+
+    /** Statuses an admin is allowed to approve from. */
+    private static final Set<BookingStatus> APPROVABLE =
+        Set.of(BookingStatus.PENDING);
+
+    /** Statuses an admin is allowed to reject from. */
+    private static final Set<BookingStatus> REJECTABLE =
+        Set.of(BookingStatus.PENDING, BookingStatus.APPROVED);
 
     public BookingService(BookingRepository repo) {
         this.repo = repo;
@@ -16,22 +30,16 @@ public class BookingService {
 
     // ── Queries ───────────────────────────────────────────────
 
-    /** Return all bookings (admin view). */
     public List<Booking> findAll() {
         return repo.findAll();
     }
 
-    /** Return bookings for a single user, newest first. */
     public List<Booking> findByUser(String userId) {
         return repo.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     // ── Conflict detection ────────────────────────────────────
 
-    /**
-     * Returns the first conflicting booking, or {@code null} if the slot is free.
-     * Used internally before creating/updating a booking.
-     */
     public Booking firstConflict(ConflictCheckRequest req) {
         List<Booking> hits = repo.findConflicting(
             req.resourceId(), req.date(),
@@ -41,10 +49,6 @@ public class BookingService {
         return hits.isEmpty() ? null : hits.get(0);
     }
 
-    /**
-     * Lightweight boolean check — used by the check-conflict endpoint
-     * so the frontend can validate before the user submits.
-     */
     public boolean hasConflict(ConflictCheckRequest req) {
         return repo.existsConflicting(
             req.resourceId(), req.date(),
@@ -55,10 +59,6 @@ public class BookingService {
 
     // ── Mutations ─────────────────────────────────────────────
 
-    /**
-     * Create a new booking.
-     * Throws {@link ConflictException} if the slot is already taken.
-     */
     @Transactional
     public Booking create(BookingRequest req) {
         ConflictCheckRequest check = new ConflictCheckRequest(
@@ -90,29 +90,87 @@ public class BookingService {
     }
 
     /**
-     * Update the status of an existing booking.
-     * Throws {@link ConflictException} if approving a booking that now
-     * conflicts with another approved booking.
+     * Cancel a booking on behalf of the user who owns it.
+     *
+     * Rules:
+     * - Only PENDING or APPROVED bookings can be cancelled.
+     * - The booking date must not be in the past.
+     * - The requesting user must own the booking.
+     */
+    @Transactional
+    public Booking cancel(Long id, String requestingUserId) {
+        Booking b = repo.findById(id)
+            .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+
+        if (!b.getUserId().equals(requestingUserId)) {
+            throw new ForbiddenException("You can only cancel your own bookings.");
+        }
+
+        if (!CANCELLABLE.contains(b.getStatus())) {
+            throw new InvalidTransitionException(
+                "Cannot cancel a booking with status '%s'. Only PENDING or APPROVED bookings can be cancelled."
+                    .formatted(b.getStatus())
+            );
+        }
+
+        if (b.getDate().isBefore(LocalDate.now())) {
+            throw new InvalidTransitionException(
+                "Cannot cancel a booking that has already passed."
+            );
+        }
+
+        b.setStatus(BookingStatus.CANCELLED);
+        return repo.save(b);
+    }
+
+    /**
+     * Update the status of a booking (admin: approve or reject).
+     *
+     * Rules:
+     * - Only PENDING bookings can be approved.
+     * - Only PENDING or APPROVED bookings can be rejected.
+     * - Approving re-checks for conflicts in case another booking was
+     *   approved in the meantime.
      */
     @Transactional
     public Booking updateStatus(Long id, BookingStatus status) {
         Booking b = repo.findById(id)
             .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
 
-        // Re-check conflicts when approving (another booking may have been
-        // approved in the meantime for the same slot)
-        if (status == BookingStatus.APPROVED) {
-            ConflictCheckRequest check = new ConflictCheckRequest(
-                b.getResourceId(), b.getDate(),
-                b.getStartTime(), b.getEndTime(),
-                id   // exclude self
-            );
-            if (hasConflict(check)) {
-                throw new ConflictException(
-                    "Cannot approve: '%s' has a conflicting approved booking on %s."
-                        .formatted(b.getResourceName(), b.getDate())
+        switch (status) {
+            case APPROVED -> {
+                if (!APPROVABLE.contains(b.getStatus())) {
+                    throw new InvalidTransitionException(
+                        "Cannot approve a booking with status '%s'.".formatted(b.getStatus())
+                    );
+                }
+                ConflictCheckRequest check = new ConflictCheckRequest(
+                    b.getResourceId(), b.getDate(),
+                    b.getStartTime(), b.getEndTime(), id
                 );
+                if (hasConflict(check)) {
+                    throw new ConflictException(
+                        "Cannot approve: '%s' has a conflicting approved booking on %s."
+                            .formatted(b.getResourceName(), b.getDate())
+                    );
+                }
             }
+            case REJECTED -> {
+                if (!REJECTABLE.contains(b.getStatus())) {
+                    throw new InvalidTransitionException(
+                        "Cannot reject a booking with status '%s'.".formatted(b.getStatus())
+                    );
+                }
+            }
+            case CANCELLED ->
+                // Admins should use the cancel endpoint; this path is a fallback
+                throw new InvalidTransitionException(
+                    "Use the cancel endpoint to cancel a booking."
+                );
+            default ->
+                throw new InvalidTransitionException(
+                    "Unsupported status transition to '%s'.".formatted(status)
+                );
         }
 
         b.setStatus(status);

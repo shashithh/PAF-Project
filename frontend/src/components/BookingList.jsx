@@ -222,7 +222,7 @@ function BookingList({ scope = 'user', currentUserId, title }) {
               </h3>
               <div className="cards-grid">
                 {groups.upcoming.map((b) => (
-                  <BookingCard key={b.id} booking={b} showAdminControls={false} />
+                  <BookingCard key={b.id} booking={b} showAdminControls={false} currentUserId={currentUserId} />
                 ))}
               </div>
             </div>
@@ -237,7 +237,7 @@ function BookingList({ scope = 'user', currentUserId, title }) {
               </h3>
               <div className="cards-grid">
                 {groups.past.map((b) => (
-                  <BookingCard key={b.id} booking={b} showAdminControls={false} />
+                  <BookingCard key={b.id} booking={b} showAdminControls={false} currentUserId={currentUserId} />
                 ))}
               </div>
             </div>

@@ -52,9 +52,10 @@ function getTemporalTag(dateStr) {
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-function BookingCard({ booking, showAdminControls = false }) {
-  const { updateBookingStatus, notify } = useBookingContext()
+function BookingCard({ booking, showAdminControls = false, currentUserId }) {
+  const { cancelBooking, updateBookingStatus, notify } = useBookingContext()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [cancelling,    setCancelling]    = useState(false)
 
   const config       = STATUS_CONFIG[booking.status] || {}
   const canCancel    = booking.status === 'PENDING' || booking.status === 'APPROVED'
@@ -63,13 +64,11 @@ function BookingCard({ booking, showAdminControls = false }) {
   const resIcon      = RESOURCE_ICONS[booking.resourceName] ?? '📦'
   const temporalTag  = !showAdminControls ? getTemporalTag(booking.date) : null
 
-  const handleCancel = () => {
-    if (confirmCancel) {
-      updateBookingStatus(booking.id, 'CANCELLED')
-      notify('Booking cancelled.')
-    } else {
-      setConfirmCancel(true)
-    }
+  const handleCancelConfirm = async () => {
+    setCancelling(true)
+    setConfirmCancel(false)
+    await cancelBooking(booking.id, currentUserId ?? booking.userId)
+    setCancelling(false)
   }
 
   const handleApprove = () => {
@@ -159,12 +158,16 @@ function BookingCard({ booking, showAdminControls = false }) {
         <div className="card-actions">
           {/* User: cancel with confirm step — only on active bookings */}
           {!showAdminControls && canCancel && (
-            confirmCancel ? (
+            cancelling ? (
+              <span className="cancel-loading" aria-live="polite">
+                <span className="spinner-cancel" aria-hidden="true" /> Cancelling…
+              </span>
+            ) : confirmCancel ? (
               <div className="confirm-row" role="group" aria-label="Confirm cancellation">
                 <span className="confirm-label">Cancel?</span>
                 <button
                   className="btn-confirm-yes"
-                  onClick={handleCancel}
+                  onClick={handleCancelConfirm}
                   aria-label="Yes, cancel this booking"
                 >
                   Yes
@@ -180,7 +183,7 @@ function BookingCard({ booking, showAdminControls = false }) {
             ) : (
               <button
                 className="btn-cancel"
-                onClick={handleCancel}
+                onClick={() => setConfirmCancel(true)}
                 aria-label={`Cancel booking for ${booking.resourceName}`}
               >
                 Cancel

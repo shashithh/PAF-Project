@@ -140,7 +140,24 @@ export async function submitBooking(payload) {
 }
 
 /**
- * Update a booking's status (approve / reject / cancel).
+ * Cancel a booking (user action).
+ * Real: DELETE /api/bookings/{id}?userId={userId}
+ */
+export async function cancelBooking(id, userId) {
+  // ── Real API ──────────────────────────────────────────────
+  // const res = await fetch(`/api/bookings/${id}?userId=${encodeURIComponent(userId)}`, {
+  //   method: 'DELETE',
+  // })
+  // if (!res.ok) throw new Error(await parseError(res))
+  // return res.json()
+  // ─────────────────────────────────────────────────────────
+
+  await new Promise((r) => setTimeout(r, 300))
+  return { id, status: 'CANCELLED' }
+}
+
+/**
+ * Update a booking's status (admin: approve / reject).
  * Real: PATCH /api/bookings/{id}/status
  */
 export async function updateBookingStatus(id, status) {

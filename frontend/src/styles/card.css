@@ -284,6 +284,27 @@
 .btn-confirm-yes:hover,
 .btn-confirm-no:hover { opacity: .8; }
 
+/* ── Cancel loading state ── */
+.cancel-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .78rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.spinner-cancel {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(107, 114, 128, .3);
+  border-top-color: var(--color-muted);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 /* filter-bar rules live in list.css */
 
 /* admin-stats rules live in App.css */
