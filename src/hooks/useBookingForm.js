@@ -2,24 +2,51 @@ import { useState, useMemo, useCallback } from 'react'
 import { resources } from '../data/mockBookings.js'
 import { useBookingContext } from '../context/BookingContext.jsx'
 
-/* ── Constants ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   Constants
+   ══════════════════════════════════════ */
 export const PURPOSE_MAX = 200
+
+/** Earliest bookable hour (inclusive), 24-h */
+export const OPERATING_START = 7    // 07:00
+/** Latest bookable end hour (inclusive), 24-h */
+export const OPERATING_END   = 22   // 22:00
+/** Minimum booking length in minutes */
+export const MIN_DURATION_MINS = 30
+/** Maximum booking length in minutes */
+export const MAX_DURATION_MINS = 8 * 60  // 8 hours
 
 const EMPTY_FORM = {
   resourceId: '',
-  date:        '',
+  date:       '',
   startTime:  '',
   endTime:    '',
   purpose:    '',
 }
 
-/* ── Helpers ───────────────────────────────────────────────── */
-function calcDuration(startTime, endTime) {
-  if (!startTime || !endTime) return null
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  const mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins <= 0) return null
+/* ══════════════════════════════════════
+   Pure time helpers
+   ══════════════════════════════════════ */
+
+/** Convert "HH:MM" → total minutes since midnight */
+function toMins(timeStr) {
+  if (!timeStr) return null
+  const [h, m] = timeStr.split(':').map(Number)
+  return h * 60 + m
+}
+
+/** Format minutes-since-midnight → "H:MM am/pm" */
+function fmtTime(mins) {
+  const h   = Math.floor(mins / 60)
+  const m   = mins % 60
+  const ampm = h < 12 ? 'am' : 'pm'
+  const h12  = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+/** Format a minute count → "Xh Ym" / "Xh" / "Ym" */
+export function formatDuration(mins) {
+  if (mins == null || mins <= 0) return null
   const h = Math.floor(mins / 60)
   const m = mins % 60
   if (h > 0 && m > 0) return `${h}h ${m}m`
@@ -35,21 +62,106 @@ function formatDate(dateStr) {
 }
 
 /* ══════════════════════════════════════
+   Time validation rules
+   Each rule receives the parsed form values
+   and returns an error string or null.
+   ══════════════════════════════════════ */
+const TIME_RULES = [
+  // 1. Both fields must be present (handled by required check, but guard here too)
+  ({ startMins, endMins }) => {
+    if (startMins === null || endMins === null) return null
+    return null
+  },
+
+  // 2. End must be strictly after start
+  ({ startMins, endMins }) => {
+    if (startMins === null || endMins === null) return null
+    if (endMins <= startMins)
+      return { field: 'endTime', msg: 'End time must be after start time.' }
+    return null
+  },
+
+  // 3. Minimum duration
+  ({ startMins, endMins }) => {
+    if (startMins === null || endMins === null) return null
+    const dur = endMins - startMins
+    if (dur > 0 && dur < MIN_DURATION_MINS)
+      return {
+        field: 'endTime',
+        msg: `Minimum booking duration is ${MIN_DURATION_MINS} minutes.`,
+      }
+    return null
+  },
+
+  // 4. Maximum duration
+  ({ startMins, endMins }) => {
+    if (startMins === null || endMins === null) return null
+    const dur = endMins - startMins
+    if (dur > MAX_DURATION_MINS)
+      return {
+        field: 'endTime',
+        msg: `Maximum booking duration is ${formatDuration(MAX_DURATION_MINS)}.`,
+      }
+    return null
+  },
+
+  // 5. Start time within operating hours
+  ({ startMins }) => {
+    if (startMins === null) return null
+    if (startMins < OPERATING_START * 60)
+      return {
+        field: 'startTime',
+        msg: `Bookings open from ${fmtTime(OPERATING_START * 60)}.`,
+      }
+    return null
+  },
+
+  // 6. End time within operating hours
+  ({ endMins }) => {
+    if (endMins === null) return null
+    if (endMins > OPERATING_END * 60)
+      return {
+        field: 'endTime',
+        msg: `Bookings must end by ${fmtTime(OPERATING_END * 60)}.`,
+      }
+    return null
+  },
+
+  // 7. On today's date, start time must not be in the past
+  ({ startMins, date }) => {
+    if (startMins === null || !date) return null
+    const today = new Date().toISOString().split('T')[0]
+    if (date !== today) return null
+    const now = new Date()
+    const nowMins = now.getHours() * 60 + now.getMinutes()
+    if (startMins <= nowMins)
+      return { field: 'startTime', msg: 'Start time has already passed today.' }
+    return null
+  },
+]
+
+/* ══════════════════════════════════════
    useBookingForm
    ══════════════════════════════════════ */
 export function useBookingForm(currentUser) {
   const { bookings, addBooking, notify } = useBookingContext()
 
-  const [form,      setForm]      = useState(EMPTY_FORM)
-  const [errors,    setErrors]    = useState({})
+  const [form,       setForm]       = useState(EMPTY_FORM)
+  const [errors,     setErrors]     = useState({})
+  const [touched,    setTouched]    = useState({})   // tracks blurred fields
   const [submitting, setSubmitting] = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
 
-  /* ── Field change handler ── */
+  /* ── Mark field as touched on blur ── */
+  const handleBlur = useCallback((e) => {
+    const { name } = e.target
+    setTouched((prev) => (prev[name] ? prev : { ...prev, [name]: true }))
+  }, [])
+
+  /* ── Field change ── */
   const handleChange = useCallback((e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
-    // Clear the specific field error and any conflict error on change
     setErrors((prev) => {
       if (!prev[name] && !prev.conflict) return prev
       const next = { ...prev }
@@ -59,30 +171,64 @@ export function useBookingForm(currentUser) {
     })
   }, [])
 
-  /* ── Validation ── */
+  /* ── Full validation (run on submit) ── */
   const validate = useCallback(() => {
     const errs = {}
-    if (!form.resourceId)      errs.resourceId = 'Please select a resource.'
-    if (!form.date)            errs.date       = 'Please select a date.'
-    if (!form.startTime)       errs.startTime  = 'Please enter a start time.'
-    if (!form.endTime)         errs.endTime    = 'Please enter an end time.'
-    if (!form.purpose.trim())  errs.purpose    = 'Please describe the purpose.'
 
-    if (form.startTime && form.endTime && form.endTime <= form.startTime)
-      errs.endTime = 'End time must be after start time.'
+    // Required fields
+    if (!form.resourceId)     errs.resourceId = 'Please select a resource.'
+    if (!form.date)           errs.date       = 'Please select a date.'
+    if (!form.startTime)      errs.startTime  = 'Please enter a start time.'
+    if (!form.endTime)        errs.endTime    = 'Please enter an end time.'
+    if (!form.purpose.trim()) errs.purpose    = 'Please describe the purpose.'
 
-    const today = new Date().toISOString().split('T')[0]
-    if (form.date && form.date < today)
-      errs.date = 'Date cannot be in the past.'
+    // Date: not in the past
+    if (form.date) {
+      const today = new Date().toISOString().split('T')[0]
+      if (form.date < today)
+        errs.date = 'Date cannot be in the past.'
+    }
+
+    // Time rules (only when both fields are present and no date error)
+    if (form.startTime && form.endTime && !errs.date) {
+      const ctx = {
+        startMins: toMins(form.startTime),
+        endMins:   toMins(form.endTime),
+        date:      form.date,
+      }
+      for (const rule of TIME_RULES) {
+        const result = rule(ctx)
+        if (result && !errs[result.field]) {
+          errs[result.field] = result.msg
+        }
+      }
+    }
 
     return errs
   }, [form])
+
+  /* ── Live time warnings (shown after a field is touched) ── */
+  const timeWarnings = useMemo(() => {
+    if (!form.startTime && !form.endTime) return {}
+    const warns = {}
+    const ctx = {
+      startMins: toMins(form.startTime),
+      endMins:   toMins(form.endTime),
+      date:      form.date,
+    }
+    for (const rule of TIME_RULES) {
+      const result = rule(ctx)
+      if (result && (touched[result.field] || touched.startTime || touched.endTime)) {
+        if (!warns[result.field]) warns[result.field] = result.msg
+      }
+    }
+    return warns
+  }, [form.startTime, form.endTime, form.date, touched])
 
   /* ── Conflict detection ── */
   const findConflict = useCallback(() => {
     const newStart = `${form.date}T${form.startTime}`
     const newEnd   = `${form.date}T${form.endTime}`
-
     return bookings.find(
       (b) =>
         b.resourceId === form.resourceId &&
@@ -96,12 +242,16 @@ export function useBookingForm(currentUser) {
   const reset = useCallback(() => {
     setForm(EMPTY_FORM)
     setErrors({})
+    setTouched({})
     setSubmitted(false)
   }, [])
 
   /* ── Submit ── */
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
+
+    // Mark all fields touched so live warnings become visible
+    setTouched({ resourceId: true, date: true, startTime: true, endTime: true, purpose: true })
 
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
@@ -118,7 +268,6 @@ export function useBookingForm(currentUser) {
     }
 
     setSubmitting(true)
-
     // Simulate async API call — replace with real fetch when backend is ready
     await new Promise((resolve) => setTimeout(resolve, 900))
 
@@ -140,8 +289,6 @@ export function useBookingForm(currentUser) {
     notify('Booking submitted successfully!')
     setSubmitting(false)
     setSubmitted(true)
-
-    // Reset after the success flash
     setTimeout(reset, 1800)
   }, [validate, findConflict, form, currentUser, addBooking, notify, reset])
 
@@ -151,17 +298,20 @@ export function useBookingForm(currentUser) {
     [form.resourceId]
   )
 
+  const durationMins = useMemo(() => {
+    const s = toMins(form.startTime)
+    const e = toMins(form.endTime)
+    if (s === null || e === null || e <= s) return null
+    return e - s
+  }, [form.startTime, form.endTime])
+
   const duration = useMemo(
-    () => calcDuration(form.startTime, form.endTime),
-    [form.startTime, form.endTime]
+    () => formatDuration(durationMins),
+    [durationMins]
   )
 
-  const formattedDate = useMemo(
-    () => formatDate(form.date),
-    [form.date]
-  )
+  const formattedDate = useMemo(() => formatDate(form.date), [form.date])
 
-  // Show the summary preview when resource + date + valid time range are all set
   const showPreview = useMemo(
     () =>
       Boolean(form.resourceId && form.date && form.startTime && form.endTime) &&
@@ -169,25 +319,27 @@ export function useBookingForm(currentUser) {
     [form.resourceId, form.date, form.startTime, form.endTime]
   )
 
-  const purposeLength = form.purpose.length
+  // Merge submit errors with live time warnings — submit errors take priority
+  const displayErrors = useMemo(
+    () => ({ ...timeWarnings, ...errors }),
+    [timeWarnings, errors]
+  )
 
   return {
-    // Controlled field values
     form,
-    // Validation errors
-    errors,
-    // Submission state
+    errors: displayErrors,
+    touched,
     submitting,
     submitted,
-    // Handlers
     handleChange,
+    handleBlur,
     handleSubmit,
     reset,
-    // Derived / computed
     selectedResource,
     duration,
+    durationMins,
     formattedDate,
     showPreview,
-    purposeLength,
+    purposeLength: form.purpose.length,
   }
 }

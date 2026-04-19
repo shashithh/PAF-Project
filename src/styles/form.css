@@ -224,10 +224,45 @@
   background: #f8f9ff;
   border-radius: 6px;
   border: 1px solid var(--color-border);
+  transition: background var(--transition), border-color var(--transition);
 }
 
 .duration-hint strong {
   color: var(--color-primary);
+}
+
+.duration-hint-ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.duration-hint-ok strong {
+  color: #166534;
+}
+
+.duration-hint-warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.duration-hint-warn strong {
+  color: #92400e;
+}
+
+.duration-rule {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+/* ── Field hint (operating hours) ── */
+.field-hint {
+  font-size: .8rem;
+  color: var(--color-muted);
+  margin-bottom: .85rem;
+  padding: .35rem .6rem;
+  background: var(--color-surface-2);
+  border-radius: 6px;
+  border-left: 3px solid var(--color-primary);
 }
 
 /* ── Textarea footer (error + char count) ── */

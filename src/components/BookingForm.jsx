@@ -1,6 +1,14 @@
 import React from 'react'
 import { resources } from '../data/mockBookings.js'
-import { useBookingForm, PURPOSE_MAX } from '../hooks/useBookingForm.js'
+import {
+  useBookingForm,
+  PURPOSE_MAX,
+  OPERATING_START,
+  OPERATING_END,
+  MIN_DURATION_MINS,
+  MAX_DURATION_MINS,
+  formatDuration,
+} from '../hooks/useBookingForm.js'
 import '../styles/form.css'
 
 const RESOURCE_ICONS = {
@@ -11,16 +19,25 @@ const RESOURCE_ICONS = {
   r5: '📽️',
 }
 
+/** Convert 24-h hour number → "H am/pm" label */
+function fmtHour(h) {
+  const ampm = h < 12 ? 'am' : 'pm'
+  return `${h % 12 || 12}${ampm}`
+}
+
 function BookingForm({ currentUser }) {
   const {
     form,
     errors,
+    touched,
     submitting,
     submitted,
     handleChange,
+    handleBlur,
     handleSubmit,
     selectedResource,
     duration,
+    durationMins,
     formattedDate,
     showPreview,
     purposeLength,
@@ -65,6 +82,7 @@ function BookingForm({ currentUser }) {
               name="resourceId"
               value={form.resourceId}
               onChange={handleChange}
+              onBlur={handleBlur}
               className={errors.resourceId ? 'input-error' : ''}
               aria-describedby={errors.resourceId ? 'resourceId-error' : undefined}
               aria-invalid={!!errors.resourceId}
@@ -108,6 +126,12 @@ function BookingForm({ currentUser }) {
           <span className="section-step">2</span> Date &amp; Time
         </legend>
 
+        {/* Operating hours hint */}
+        <p className="field-hint">
+          Bookings available {fmtHour(OPERATING_START)} – {fmtHour(OPERATING_END)},
+          {' '}{MIN_DURATION_MINS} min – {formatDuration(MAX_DURATION_MINS)} per session.
+        </p>
+
         <div className="form-group">
           <label htmlFor="date">Date</label>
           <input
@@ -116,6 +140,7 @@ function BookingForm({ currentUser }) {
             name="date"
             value={form.date}
             onChange={handleChange}
+            onBlur={handleBlur}
             className={errors.date ? 'input-error' : ''}
             aria-describedby={errors.date ? 'date-error' : undefined}
             aria-invalid={!!errors.date}
@@ -136,8 +161,11 @@ function BookingForm({ currentUser }) {
               name="startTime"
               value={form.startTime}
               onChange={handleChange}
+              onBlur={handleBlur}
+              min={`${String(OPERATING_START).padStart(2, '0')}:00`}
+              max={`${String(OPERATING_END  ).padStart(2, '0')}:00`}
               className={errors.startTime ? 'input-error' : ''}
-              aria-describedby={errors.startTime ? 'startTime-error' : undefined}
+              aria-describedby={errors.startTime ? 'startTime-error' : 'time-constraints'}
               aria-invalid={!!errors.startTime}
             />
             {errors.startTime && (
@@ -155,8 +183,11 @@ function BookingForm({ currentUser }) {
               name="endTime"
               value={form.endTime}
               onChange={handleChange}
+              onBlur={handleBlur}
+              min={form.startTime || `${String(OPERATING_START).padStart(2, '0')}:00`}
+              max={`${String(OPERATING_END).padStart(2, '0')}:00`}
               className={errors.endTime ? 'input-error' : ''}
-              aria-describedby={errors.endTime ? 'endTime-error' : undefined}
+              aria-describedby={errors.endTime ? 'endTime-error' : 'time-constraints'}
               aria-invalid={!!errors.endTime}
             />
             {errors.endTime && (
@@ -167,9 +198,29 @@ function BookingForm({ currentUser }) {
           </div>
         </div>
 
-        {duration && (
-          <div className="duration-hint">
-            🕐 Duration: <strong>{duration}</strong>
+        {/* Duration feedback — shown as soon as both times are valid */}
+        {durationMins !== null && (
+          <div
+            id="time-constraints"
+            className={`duration-hint ${
+              durationMins < MIN_DURATION_MINS || durationMins > MAX_DURATION_MINS
+                ? 'duration-hint-warn'
+                : 'duration-hint-ok'
+            }`}
+          >
+            {durationMins < MIN_DURATION_MINS ? '⚠️' :
+             durationMins > MAX_DURATION_MINS ? '⚠️' : '🕐'}{' '}
+            Duration: <strong>{duration}</strong>
+            {durationMins < MIN_DURATION_MINS && (
+              <span className="duration-rule">
+                {' '}· min {MIN_DURATION_MINS} min
+              </span>
+            )}
+            {durationMins > MAX_DURATION_MINS && (
+              <span className="duration-rule">
+                {' '}· max {formatDuration(MAX_DURATION_MINS)}
+              </span>
+            )}
           </div>
         )}
       </fieldset>
@@ -190,10 +241,9 @@ function BookingForm({ currentUser }) {
             placeholder="e.g. Final year project meeting, lab session for CS301…"
             value={form.purpose}
             onChange={handleChange}
+            onBlur={handleBlur}
             className={errors.purpose ? 'input-error' : ''}
-            aria-describedby={
-              errors.purpose ? 'purpose-error' : 'purpose-count'
-            }
+            aria-describedby={errors.purpose ? 'purpose-error' : 'purpose-count'}
             aria-invalid={!!errors.purpose}
           />
           <div className="textarea-footer">
@@ -229,7 +279,7 @@ function BookingForm({ currentUser }) {
       )}
 
       {/* ── Booking summary preview ── */}
-      {showPreview && !errors.conflict && (
+      {showPreview && !errors.conflict && !errors.startTime && !errors.endTime && (
         <div className="booking-preview" aria-label="Booking summary">
           <p className="preview-label">Booking summary</p>
           <div className="preview-grid">
