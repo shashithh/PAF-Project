@@ -1,9 +1,8 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { resources } from '../data/mockBookings.js'
-import { useBookingContext } from '../context/BookingContext.jsx'
+import { useBookingForm, PURPOSE_MAX } from '../hooks/useBookingForm.js'
 import '../styles/form.css'
 
-// Icon map for resource types — extend as needed
 const RESOURCE_ICONS = {
   r1: '🖥️',
   r2: '🖥️',
@@ -12,119 +11,20 @@ const RESOURCE_ICONS = {
   r5: '📽️',
 }
 
-const PURPOSE_MAX = 200
-
 function BookingForm({ currentUser }) {
-  const { bookings, addBooking, notify } = useBookingContext()
-  const [form, setForm] = useState({
-    resourceId: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    purpose: '',
-  })
-  const [errors, setErrors]   = useState({})
-  const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-
-  const selectedResource = resources.find((r) => r.id === form.resourceId)
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
-    if (errors.conflict) setErrors((prev) => ({ ...prev, conflict: '' }))
-  }
-
-  const validate = () => {
-    const newErrors = {}
-    if (!form.resourceId) newErrors.resourceId = 'Please select a resource.'
-    if (!form.date)       newErrors.date       = 'Please select a date.'
-    if (!form.startTime)  newErrors.startTime  = 'Please enter a start time.'
-    if (!form.endTime)    newErrors.endTime    = 'Please enter an end time.'
-    if (!form.purpose.trim()) newErrors.purpose = 'Please describe the purpose.'
-
-    if (form.startTime && form.endTime && form.endTime <= form.startTime)
-      newErrors.endTime = 'End time must be after start time.'
-
-    const today = new Date().toISOString().split('T')[0]
-    if (form.date && form.date < today)
-      newErrors.date = 'Date cannot be in the past.'
-
-    return newErrors
-  }
-
-  const hasConflict = () => {
-    const newStart = `${form.date}T${form.startTime}`
-    const newEnd   = `${form.date}T${form.endTime}`
-    return bookings
-      .filter(
-        (b) =>
-          b.resourceId === form.resourceId &&
-          (b.status === 'PENDING' || b.status === 'APPROVED')
-      )
-      .find((b) => {
-        const existStart = `${b.date}T${b.startTime}`
-        const existEnd   = `${b.date}T${b.endTime}`
-        return existStart < newEnd && existEnd > newStart
-      })
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const validationErrors = validate()
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      return
-    }
-
-    const conflict = hasConflict()
-    if (conflict) {
-      setErrors({
-        conflict: `This resource is already booked from ${conflict.startTime} to ${conflict.endTime} on ${conflict.date}.`,
-      })
-      return
-    }
-
-    setLoading(true)
-    // Simulate async API call — replace with real fetch when backend is ready
-    await new Promise((r) => setTimeout(r, 900))
-
-    const newBooking = {
-      id: `b${Date.now()}`,
-      userId: currentUser.id,
-      resourceId: form.resourceId,
-      resourceName: selectedResource?.name || form.resourceId,
-      date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      purpose: form.purpose,
-      status: 'PENDING',
-    }
-
-    addBooking(newBooking)
-    notify('Booking submitted successfully!')
-    setSubmitted(true)
-    setLoading(false)
-
-    // Reset after brief success flash
-    setTimeout(() => {
-      setForm({ resourceId: '', date: '', startTime: '', endTime: '', purpose: '' })
-      setErrors({})
-      setSubmitted(false)
-    }, 1800)
-  }
-
-  // Derived: show summary preview when resource + date + both times are filled
-  const showPreview =
-    form.resourceId && form.date && form.startTime && form.endTime &&
-    form.endTime > form.startTime
-
-  const formattedDate = form.date
-    ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-      })
-    : ''
+  const {
+    form,
+    errors,
+    submitting,
+    submitted,
+    handleChange,
+    handleSubmit,
+    selectedResource,
+    duration,
+    formattedDate,
+    showPreview,
+    purposeLength,
+  } = useBookingForm(currentUser)
 
   return (
     <form className="booking-form" onSubmit={handleSubmit} noValidate>
@@ -134,13 +34,15 @@ function BookingForm({ currentUser }) {
         <div className="form-header-icon">📋</div>
         <div>
           <h2 className="form-title">New Booking</h2>
-          <p className="form-subtitle">Fill in the details to reserve a campus resource.</p>
+          <p className="form-subtitle">
+            Fill in the details to reserve a campus resource.
+          </p>
         </div>
       </div>
 
-      {/* ── Success state ── */}
+      {/* ── Success banner ── */}
       {submitted && (
-        <div className="form-success">
+        <div className="form-success" role="status">
           <span className="form-success-icon">✅</span>
           <div>
             <strong>Booking submitted!</strong>
@@ -149,7 +51,7 @@ function BookingForm({ currentUser }) {
         </div>
       )}
 
-      {/* ── Section: Resource ── */}
+      {/* ══ Section 1: Resource ══ */}
       <fieldset className="form-section">
         <legend className="form-section-label">
           <span className="section-step">1</span> Resource
@@ -165,11 +67,13 @@ function BookingForm({ currentUser }) {
               onChange={handleChange}
               className={errors.resourceId ? 'input-error' : ''}
               aria-describedby={errors.resourceId ? 'resourceId-error' : undefined}
+              aria-invalid={!!errors.resourceId}
             >
               <option value="">— Choose a resource —</option>
               {resources.map((r) => (
                 <option key={r.id} value={r.id}>
                   {RESOURCE_ICONS[r.id] ?? '📦'} {r.name}
+                  {r.capacity ? ` (cap. ${r.capacity})` : ''}
                 </option>
               ))}
             </select>
@@ -182,19 +86,23 @@ function BookingForm({ currentUser }) {
           )}
         </div>
 
-        {/* Resource chip — shown once selected */}
         {selectedResource && (
           <div className="resource-chip">
-            <span className="resource-chip-icon">
+            <span className="resource-chip-icon" aria-hidden="true">
               {RESOURCE_ICONS[selectedResource.id] ?? '📦'}
             </span>
             <span className="resource-chip-name">{selectedResource.name}</span>
+            {selectedResource.capacity && (
+              <span className="resource-chip-meta">
+                Cap. {selectedResource.capacity}
+              </span>
+            )}
             <span className="resource-chip-badge">Available</span>
           </div>
         )}
       </fieldset>
 
-      {/* ── Section: Date & Time ── */}
+      {/* ══ Section 2: Date & Time ══ */}
       <fieldset className="form-section">
         <legend className="form-section-label">
           <span className="section-step">2</span> Date &amp; Time
@@ -210,6 +118,7 @@ function BookingForm({ currentUser }) {
             onChange={handleChange}
             className={errors.date ? 'input-error' : ''}
             aria-describedby={errors.date ? 'date-error' : undefined}
+            aria-invalid={!!errors.date}
           />
           {errors.date && (
             <span id="date-error" className="error-msg" role="alert">
@@ -229,6 +138,7 @@ function BookingForm({ currentUser }) {
               onChange={handleChange}
               className={errors.startTime ? 'input-error' : ''}
               aria-describedby={errors.startTime ? 'startTime-error' : undefined}
+              aria-invalid={!!errors.startTime}
             />
             {errors.startTime && (
               <span id="startTime-error" className="error-msg" role="alert">
@@ -247,6 +157,7 @@ function BookingForm({ currentUser }) {
               onChange={handleChange}
               className={errors.endTime ? 'input-error' : ''}
               aria-describedby={errors.endTime ? 'endTime-error' : undefined}
+              aria-invalid={!!errors.endTime}
             />
             {errors.endTime && (
               <span id="endTime-error" className="error-msg" role="alert">
@@ -256,25 +167,14 @@ function BookingForm({ currentUser }) {
           </div>
         </div>
 
-        {/* Inline duration hint */}
-        {showPreview && (
+        {duration && (
           <div className="duration-hint">
-            🕐 Duration:{' '}
-            <strong>
-              {(() => {
-                const [sh, sm] = form.startTime.split(':').map(Number)
-                const [eh, em] = form.endTime.split(':').map(Number)
-                const mins = (eh * 60 + em) - (sh * 60 + sm)
-                const h = Math.floor(mins / 60)
-                const m = mins % 60
-                return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}`.trim() : `${m}m`
-              })()}
-            </strong>
+            🕐 Duration: <strong>{duration}</strong>
           </div>
         )}
       </fieldset>
 
-      {/* ── Section: Purpose ── */}
+      {/* ══ Section 3: Purpose ══ */}
       <fieldset className="form-section">
         <legend className="form-section-label">
           <span className="section-step">3</span> Purpose
@@ -291,18 +191,27 @@ function BookingForm({ currentUser }) {
             value={form.purpose}
             onChange={handleChange}
             className={errors.purpose ? 'input-error' : ''}
-            aria-describedby={errors.purpose ? 'purpose-error' : 'purpose-count'}
+            aria-describedby={
+              errors.purpose ? 'purpose-error' : 'purpose-count'
+            }
+            aria-invalid={!!errors.purpose}
           />
           <div className="textarea-footer">
-            {errors.purpose
-              ? <span id="purpose-error" className="error-msg" role="alert">{errors.purpose}</span>
-              : <span />
-            }
+            {errors.purpose ? (
+              <span id="purpose-error" className="error-msg" role="alert">
+                {errors.purpose}
+              </span>
+            ) : (
+              <span />
+            )}
             <span
               id="purpose-count"
-              className={`char-count ${form.purpose.length >= PURPOSE_MAX * 0.9 ? 'char-count-warn' : ''}`}
+              className={`char-count ${
+                purposeLength >= PURPOSE_MAX * 0.9 ? 'char-count-warn' : ''
+              }`}
+              aria-live="polite"
             >
-              {form.purpose.length}/{PURPOSE_MAX}
+              {purposeLength}/{PURPOSE_MAX}
             </span>
           </div>
         </div>
@@ -321,15 +230,20 @@ function BookingForm({ currentUser }) {
 
       {/* ── Booking summary preview ── */}
       {showPreview && !errors.conflict && (
-        <div className="booking-preview">
+        <div className="booking-preview" aria-label="Booking summary">
           <p className="preview-label">Booking summary</p>
           <div className="preview-grid">
-            <span className="preview-icon">📦</span>
+            <span className="preview-icon" aria-hidden="true">📦</span>
             <span>{selectedResource?.name}</span>
-            <span className="preview-icon">📅</span>
+            <span className="preview-icon" aria-hidden="true">📅</span>
             <span>{formattedDate}</span>
-            <span className="preview-icon">🕐</span>
-            <span>{form.startTime} – {form.endTime}</span>
+            <span className="preview-icon" aria-hidden="true">🕐</span>
+            <span>
+              {form.startTime} – {form.endTime}
+              {duration && (
+                <span className="preview-duration"> · {duration}</span>
+              )}
+            </span>
           </div>
         </div>
       )}
@@ -338,15 +252,16 @@ function BookingForm({ currentUser }) {
       <button
         type="submit"
         className="btn-primary"
-        disabled={loading || submitted}
-        aria-busy={loading}
+        disabled={submitting || submitted}
+        aria-busy={submitting}
       >
-        {loading
-          ? <><span className="spinner" aria-hidden="true" /> Submitting…</>
-          : submitted
-            ? '✅ Submitted'
-            : 'Submit Booking'
-        }
+        {submitting ? (
+          <><span className="spinner" aria-hidden="true" /> Submitting…</>
+        ) : submitted ? (
+          '✅ Submitted'
+        ) : (
+          'Submit Booking'
+        )}
       </button>
     </form>
   )

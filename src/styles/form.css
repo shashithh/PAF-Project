@@ -193,8 +193,13 @@
   color: var(--color-primary);
 }
 
+.resource-chip-meta {
+  color: var(--color-muted);
+  font-size: .78rem;
+}
+
 .resource-chip-badge {
-  margin-left: .25rem;
+  margin-left: auto;
   background: #dcfce7;
   color: #166534;
   border-radius: 20px;
@@ -315,6 +320,12 @@
 .preview-icon {
   font-size: .95rem;
   line-height: 1.5;
+}
+
+.preview-duration {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: .82rem;
 }
 
 /* ── Submit button ── */
