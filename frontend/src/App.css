@@ -201,3 +201,73 @@
 
 .header-stat-today   { background: #dbeafe; border-color: #bfdbfe; color: #1d4ed8; }
 .header-stat-pending { background: #fef9c3; border-color: #fde68a; color: #854d0e; }
+
+/* ── Unauthorized page ── */
+.unauth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem;
+}
+
+.unauth-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding: 3rem 2.5rem;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.unauth-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.unauth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.unauth-message {
+  font-size: .95rem;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.unauth-actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: .5rem;
+}
+
+.unauth-btn {
+  min-width: 160px;
+}
+
+.btn-secondary {
+  padding: .75rem 1.25rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-primary);
+  background: #eef1fd;
+}
