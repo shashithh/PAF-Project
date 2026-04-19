@@ -14,31 +14,66 @@ public class BookingService {
         this.repo = repo;
     }
 
+    // ── Queries ───────────────────────────────────────────────
+
     /** Return all bookings (admin view). */
     public List<Booking> findAll() {
         return repo.findAll();
     }
 
-    /** Return bookings for a single user. */
+    /** Return bookings for a single user, newest first. */
     public List<Booking> findByUser(String userId) {
         return repo.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    // ── Conflict detection ────────────────────────────────────
+
+    /**
+     * Returns the first conflicting booking, or {@code null} if the slot is free.
+     * Used internally before creating/updating a booking.
+     */
+    public Booking firstConflict(ConflictCheckRequest req) {
+        List<Booking> hits = repo.findConflicting(
+            req.resourceId(), req.date(),
+            req.startTime(), req.endTime(),
+            req.excludeId()
+        );
+        return hits.isEmpty() ? null : hits.get(0);
+    }
+
+    /**
+     * Lightweight boolean check — used by the check-conflict endpoint
+     * so the frontend can validate before the user submits.
+     */
+    public boolean hasConflict(ConflictCheckRequest req) {
+        return repo.existsConflicting(
+            req.resourceId(), req.date(),
+            req.startTime(), req.endTime(),
+            req.excludeId()
+        );
+    }
+
+    // ── Mutations ─────────────────────────────────────────────
+
     /**
      * Create a new booking.
-     * Throws {@link ConflictException} if the resource is already booked
-     * for an overlapping time slot.
+     * Throws {@link ConflictException} if the slot is already taken.
      */
     @Transactional
     public Booking create(BookingRequest req) {
-        List<Booking> conflicts = repo.findConflicting(
-            req.resourceId(), req.date(), req.startTime(), req.endTime()
+        ConflictCheckRequest check = new ConflictCheckRequest(
+            req.resourceId(), req.date(), req.startTime(), req.endTime(), null
         );
-        if (!conflicts.isEmpty()) {
-            Booking c = conflicts.get(0);
+        Booking conflict = firstConflict(check);
+        if (conflict != null) {
             throw new ConflictException(
-                "Resource already booked from %s to %s on %s"
-                    .formatted(c.getStartTime(), c.getEndTime(), c.getDate())
+                "Resource '%s' is already booked from %s to %s on %s."
+                    .formatted(
+                        req.resourceName(),
+                        conflict.getStartTime(),
+                        conflict.getEndTime(),
+                        conflict.getDate()
+                    )
             );
         }
 
@@ -55,13 +90,31 @@ public class BookingService {
     }
 
     /**
-     * Update the status of an existing booking (admin approve/reject,
-     * or user cancel).
+     * Update the status of an existing booking.
+     * Throws {@link ConflictException} if approving a booking that now
+     * conflicts with another approved booking.
      */
     @Transactional
     public Booking updateStatus(Long id, BookingStatus status) {
         Booking b = repo.findById(id)
             .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+
+        // Re-check conflicts when approving (another booking may have been
+        // approved in the meantime for the same slot)
+        if (status == BookingStatus.APPROVED) {
+            ConflictCheckRequest check = new ConflictCheckRequest(
+                b.getResourceId(), b.getDate(),
+                b.getStartTime(), b.getEndTime(),
+                id   // exclude self
+            );
+            if (hasConflict(check)) {
+                throw new ConflictException(
+                    "Cannot approve: '%s' has a conflicting approved booking on %s."
+                        .formatted(b.getResourceName(), b.getDate())
+                );
+            }
+        }
+
         b.setStatus(status);
         return repo.save(b);
     }

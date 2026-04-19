@@ -1,9 +1,6 @@
 package com.smartcampus.booking;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
-@ResponseStatus(HttpStatus.CONFLICT)
+/** Thrown when a booking slot is already taken. Mapped to 409 by GlobalExceptionHandler. */
 public class ConflictException extends RuntimeException {
     public ConflictException(String message) {
         super(message);

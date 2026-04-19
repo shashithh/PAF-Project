@@ -4,29 +4,40 @@ import { mockBookings } from '../data/mockBookings.js'
  * bookingService.js
  *
  * Thin async layer between the form hook and the backend.
- * All functions return a Promise that resolves with the result
- * or rejects with an Error — the hook handles the error boundary.
+ * All functions return a Promise — resolves with data, rejects with Error.
  *
- * To connect a real backend, replace the bodies of these functions
- * with fetch() / axios calls. The hook and context don't change.
+ * To connect the real Spring Boot backend, uncomment the fetch() blocks
+ * and remove the mock implementations. The hook and context don't change.
  */
 
-const SIMULATED_LATENCY_MS = 800
+const SIMULATED_LATENCY_MS = 600
 
-/* ── Helpers ─────────────────────────────────────────────── */
+/* ── Error helper ────────────────────────────────────────── */
 
 /**
- * Build a complete booking object ready to be stored.
- * Keeps the assembly logic in one place so the hook stays clean.
- *
+ * Parse a ProblemDetail JSON body (RFC 9457) from a failed response.
+ * Falls back to a generic message if the body isn't JSON.
+ */
+async function parseError(res) {
+  try {
+    const body = await res.json()
+    // ProblemDetail shape: { title, detail, status, errors? }
+    return body.detail ?? body.message ?? `Server error ${res.status}`
+  } catch {
+    return `Server error ${res.status}`
+  }
+}
+
+/* ── Payload factory ─────────────────────────────────────── */
+
+/**
+ * Build a complete booking object ready to POST.
  * @param {object} formValues  — validated form fields
  * @param {object} currentUser — { id, name }
  * @param {object} resource    — { id, name }
- * @returns {object} booking
  */
 export function createBookingPayload(formValues, currentUser, resource) {
   return {
-    id:           `b${Date.now()}`,
     userId:       currentUser.id,
     userName:     currentUser.name,
     resourceId:   formValues.resourceId,
@@ -35,52 +46,114 @@ export function createBookingPayload(formValues, currentUser, resource) {
     startTime:    formValues.startTime,
     endTime:      formValues.endTime,
     purpose:      formValues.purpose.trim(),
-    status:       'PENDING',
-    createdAt:    new Date().toISOString(),
+  }
+}
+
+/* ── API functions ───────────────────────────────────────── */
+
+/**
+ * Fetch all bookings.
+ * Real: GET /api/bookings
+ */
+export async function fetchBookings() {
+  // ── Real API ──────────────────────────────────────────────
+  // const res = await fetch('/api/bookings')
+  // if (!res.ok) throw new Error(await parseError(res))
+  // return res.json()
+  // ─────────────────────────────────────────────────────────
+
+  await new Promise((r) => setTimeout(r, SIMULATED_LATENCY_MS))
+  return mockBookings
+}
+
+/**
+ * Pre-submit conflict check — call this before showing the submit button
+ * or on blur of the time fields to give early feedback.
+ *
+ * Returns: { conflict: false }
+ *       or { conflict: true, detail: "Already booked 09:00–11:00 on 2026-04-20 (status: APPROVED)." }
+ *
+ * Real: POST /api/bookings/check-conflict
+ */
+export async function checkConflict({ resourceId, date, startTime, endTime, excludeId = null }) {
+  // ── Real API ──────────────────────────────────────────────
+  // const res = await fetch('/api/bookings/check-conflict', {
+  //   method:  'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body:    JSON.stringify({ resourceId, date, startTime, endTime, excludeId }),
+  // })
+  // if (!res.ok) throw new Error(await parseError(res))
+  // return res.json()   // { conflict: boolean, detail?: string }
+  // ─────────────────────────────────────────────────────────
+
+  await new Promise((r) => setTimeout(r, 150))   // fast — just a check
+
+  const newStart = `${date}T${startTime}`
+  const newEnd   = `${date}T${endTime}`
+
+  const hit = mockBookings.find(
+    (b) =>
+      b.resourceId === resourceId &&
+      (b.status === 'PENDING' || b.status === 'APPROVED') &&
+      (excludeId == null || b.id !== excludeId) &&
+      `${b.date}T${b.startTime}` < newEnd &&
+      `${b.date}T${b.endTime}`   > newStart
+  )
+
+  if (!hit) return { conflict: false }
+
+  return {
+    conflict: true,
+    detail: `Already booked ${hit.startTime}–${hit.endTime} on ${hit.date} (status: ${hit.status.toLowerCase()}).`,
   }
 }
 
 /**
- * Submit a new booking to the backend.
+ * Submit a new booking.
+ * Real: POST /api/bookings  →  returns the created booking (with server id/createdAt).
  *
- * Mock: resolves with the booking after a short delay.
- * Real: POST /api/bookings  →  returns the created booking from the server.
- *
- * @param {object} booking — payload from createBookingPayload()
- * @returns {Promise<object>} the persisted booking (may have server-assigned id/createdAt)
+ * Throws on HTTP 409 (conflict) or any other non-2xx response.
  */
-export async function submitBooking(booking) {
-  // ── Replace this block with a real API call ──────────────
+export async function submitBooking(payload) {
+  // ── Real API ──────────────────────────────────────────────
   // const res = await fetch('/api/bookings', {
   //   method:  'POST',
   //   headers: { 'Content-Type': 'application/json' },
-  //   body:    JSON.stringify(booking),
+  //   body:    JSON.stringify(payload),
   // })
-  // if (!res.ok) {
-  //   const err = await res.json().catch(() => ({}))
-  //   throw new Error(err.message ?? `Server error ${res.status}`)
-  // }
+  // if (!res.ok) throw new Error(await parseError(res))
   // return res.json()
-  // ────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────
 
-  await new Promise((resolve) => setTimeout(resolve, SIMULATED_LATENCY_MS))
+  await new Promise((r) => setTimeout(r, SIMULATED_LATENCY_MS))
 
-  // Simulate an occasional server error for testing (remove in production)
-  // if (Math.random() < 0.1) throw new Error('Server unavailable. Please try again.')
+  // Uncomment to test the error path:
+  // throw new Error('Server unavailable. Please try again.')
 
-  return booking   // echo back the same object (server would return its own id/timestamps)
+  // Assign a local id and timestamp (server would do this)
+  return {
+    ...payload,
+    id:        `b${Date.now()}`,
+    status:    'PENDING',
+    createdAt: new Date().toISOString(),
+  }
 }
 
 /**
- * Fetch all bookings for the current user.
- * Mock: returns a filtered slice of the mock array.
- * Real: GET /api/bookings?userId=...
- *
- * @param {string} userId
- * @returns {Promise<object[]>}
+ * Update a booking's status (approve / reject / cancel).
+ * Real: PATCH /api/bookings/{id}/status
  */
-export async function fetchBookings() {
-  // Real: return fetch('/api/bookings').then(r => r.json())
-  await new Promise((resolve) => setTimeout(resolve, 400))
-  return mockBookings
+export async function updateBookingStatus(id, status) {
+  // ── Real API ──────────────────────────────────────────────
+  // const res = await fetch(`/api/bookings/${id}/status`, {
+  //   method:  'PATCH',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body:    JSON.stringify({ status }),
+  // })
+  // if (!res.ok) throw new Error(await parseError(res))
+  // return res.json()
+  // ─────────────────────────────────────────────────────────
+
+  await new Promise((r) => setTimeout(r, 200))
+  return { id, status }
 }

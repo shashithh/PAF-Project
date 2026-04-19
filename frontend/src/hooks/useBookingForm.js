@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { resources } from '../data/mockBookings.js'
 import { useBookingContext } from '../context/BookingContext.jsx'
-import { submitBooking, createBookingPayload } from '../services/bookingService.js'
+import { submitBooking, createBookingPayload, checkConflict } from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Constants
@@ -145,22 +145,46 @@ const TIME_RULES = [
    useBookingForm
    ══════════════════════════════════════ */
 export function useBookingForm(currentUser) {
-  const { bookings, addBooking, reportSubmitError, notify } = useBookingContext()
+  const { addBooking, reportSubmitError, notify } = useBookingContext()
 
-  const [form,       setForm]       = useState(EMPTY_FORM)
-  const [errors,     setErrors]     = useState({})
-  const [touched,    setTouched]    = useState({})
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted,  setSubmitted]  = useState(false)
-  const [submitErr,  setSubmitErr]  = useState(null)
+  const [form,          setForm]          = useState(EMPTY_FORM)
+  const [errors,        setErrors]        = useState({})
+  const [touched,       setTouched]       = useState({})
+  const [submitting,    setSubmitting]    = useState(false)
+  const [submitted,     setSubmitted]     = useState(false)
+  const [submitErr,     setSubmitErr]     = useState(null)
+  const [conflictWarn,  setConflictWarn]  = useState(null)  // live async conflict message
 
   // Ref-based guard: prevents a second submission while one is in-flight
   const inFlight = useRef(false)
 
-  /* ── Mark field as touched on blur ── */
-  const handleBlur = useCallback((e) => {
+  /* ── Mark field as touched on blur + async conflict check ── */
+  const handleBlur = useCallback(async (e) => {
     const { name } = e.target
     setTouched((prev) => (prev[name] ? prev : { ...prev, [name]: true }))
+
+    // Run the conflict check whenever a slot-defining field is blurred
+    // and all four slot fields are filled
+    const slotFields = ['resourceId', 'date', 'startTime', 'endTime']
+    if (!slotFields.includes(name)) return
+
+    // Read latest form values via functional update trick — avoids stale closure
+    setForm((current) => {
+      const { resourceId, date, startTime, endTime } = current
+      if (resourceId && date && startTime && endTime && endTime > startTime) {
+        checkConflict({ resourceId, date, startTime, endTime })
+          .then((result) => {
+            setConflictWarn(result.conflict ? result.detail : null)
+          })
+          .catch(() => {
+            // Silently ignore network errors on the live check;
+            // the submit will catch them authoritatively
+          })
+      } else {
+        setConflictWarn(null)
+      }
+      return current   // no state change — we just needed to read
+    })
   }, [])
 
   /* ── Field change ── */
@@ -174,6 +198,9 @@ export function useBookingForm(currentUser) {
       delete next.conflict
       return next
     })
+    // Clear live conflict warning when any slot field changes
+    const slotFields = ['resourceId', 'date', 'startTime', 'endTime']
+    if (slotFields.includes(name)) setConflictWarn(null)
   }, [])
 
   /* ── Full validation (run on submit) ── */
@@ -230,18 +257,13 @@ export function useBookingForm(currentUser) {
     return warns
   }, [form.startTime, form.endTime, form.date, touched])
 
-  /* ── Conflict detection ── */
-  const findConflict = useCallback(() => {
-    const newStart = `${form.date}T${form.startTime}`
-    const newEnd   = `${form.date}T${form.endTime}`
-    return bookings.find(
-      (b) =>
-        b.resourceId === form.resourceId &&
-        (b.status === 'PENDING' || b.status === 'APPROVED') &&
-        `${b.date}T${b.startTime}` < newEnd &&
-        `${b.date}T${b.endTime}`   > newStart
-    )
-  }, [bookings, form.resourceId, form.date, form.startTime, form.endTime])
+  /* ── Conflict detection (async, server-authoritative) ── */
+  const runConflictCheck = useCallback(async () => {
+    const { resourceId, date, startTime, endTime } = form
+    if (!resourceId || !date || !startTime || !endTime) return null
+    const result = await checkConflict({ resourceId, date, startTime, endTime })
+    return result.conflict ? result.detail : null
+  }, [form])
 
   /* ── Reset — clears every piece of form state ── */
   const reset = useCallback(() => {
@@ -250,6 +272,7 @@ export function useBookingForm(currentUser) {
     setTouched({})
     setSubmitErr(null)
     setSubmitted(false)
+    setConflictWarn(null)
     inFlight.current = false
   }, [])
 
@@ -268,7 +291,7 @@ export function useBookingForm(currentUser) {
     })
     setSubmitErr(null)
 
-    // 1. Validate
+    // 1. Client-side validation
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
@@ -276,19 +299,19 @@ export function useBookingForm(currentUser) {
       return
     }
 
-    // 2. Conflict check
-    const conflict = findConflict()
-    if (conflict) {
-      setErrors({
-        conflict: `Already booked ${conflict.startTime}–${conflict.endTime} on ${conflict.date}.`,
-      })
-      inFlight.current = false
-      return
-    }
-
-    // 3. Submit to service
+    // 2. Authoritative conflict check (hits the service / backend)
     setSubmitting(true)
     try {
+      const conflictDetail = await runConflictCheck()
+      if (conflictDetail) {
+        setErrors({ conflict: conflictDetail })
+        setConflictWarn(conflictDetail)
+        inFlight.current = false
+        setSubmitting(false)
+        return
+      }
+
+      // 3. Submit
       const resource = resources.find((r) => r.id === form.resourceId)
       const payload  = createBookingPayload(form, currentUser, resource)
       const saved    = await submitBooking(payload)
@@ -297,8 +320,9 @@ export function useBookingForm(currentUser) {
       addBooking(saved)
       notify('Booking submitted successfully!')
 
-      // 5. Show success state, then reset after a short delay
+      // 5. Success state → auto-reset
       setSubmitted(true)
+      setConflictWarn(null)
       setTimeout(reset, 2000)
 
     } catch (err) {
@@ -310,7 +334,7 @@ export function useBookingForm(currentUser) {
     } finally {
       setSubmitting(false)
     }
-  }, [validate, findConflict, form, currentUser, addBooking, reportSubmitError, notify, reset])
+  }, [validate, runConflictCheck, form, currentUser, addBooking, reportSubmitError, notify, reset])
 
   /* ── Derived values ── */
   const selectedResource = useMemo(
@@ -339,10 +363,14 @@ export function useBookingForm(currentUser) {
     [form.resourceId, form.date, form.startTime, form.endTime]
   )
 
-  // Merge submit errors with live time warnings — submit errors take priority
+  // Merge: time warnings < conflict warning < submit errors (highest priority wins)
   const displayErrors = useMemo(
-    () => ({ ...timeWarnings, ...errors }),
-    [timeWarnings, errors]
+    () => ({
+      ...timeWarnings,
+      ...(conflictWarn ? { conflict: conflictWarn } : {}),
+      ...errors,
+    }),
+    [timeWarnings, conflictWarn, errors]
   )
 
   return {
@@ -352,6 +380,7 @@ export function useBookingForm(currentUser) {
     submitting,
     submitted,
     submitErr,
+    conflictWarn,
     handleChange,
     handleBlur,
     handleSubmit,
