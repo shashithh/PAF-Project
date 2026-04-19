@@ -1,7 +1,6 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
-import { resources } from '../data/mockBookings.js'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useBookingContext } from '../context/BookingContext.jsx'
-import { submitBooking, createBookingPayload, checkConflict } from '../services/bookingService.js'
+import { submitBooking, createBookingPayload, checkConflict, fetchResources } from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Constants
@@ -146,6 +145,15 @@ const TIME_RULES = [
    ══════════════════════════════════════ */
 export function useBookingForm(currentUser) {
   const { addBooking, reportSubmitError, notify } = useBookingContext()
+
+  const [resources, setResources] = useState([])
+
+  // Load resources from the API once on mount
+  useEffect(() => {
+    fetchResources()
+      .then(setResources)
+      .catch(() => {}) // non-fatal — form still works, dropdown just empty
+  }, [])
 
   const [form,          setForm]          = useState(EMPTY_FORM)
   const [errors,        setErrors]        = useState({})
@@ -402,6 +410,7 @@ export function useBookingForm(currentUser) {
     handleSubmit,
     reset,
     dismissConflictWarn,
+    resources,
     selectedResource,
     duration,
     durationMins,

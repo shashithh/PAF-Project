@@ -17,75 +17,47 @@ public class BookingController {
         this.service = service;
     }
 
-    /** GET /api/bookings — all bookings (admin) */
+    /** GET /api/bookings */
     @GetMapping
     public List<Booking> getAll() {
         return service.findAll();
     }
 
-    /** GET /api/bookings?userId={id} — bookings for one user */
+    /** GET /api/bookings?userId={id} */
     @GetMapping(params = "userId")
     public List<Booking> getByUser(@RequestParam String userId) {
         return service.findByUser(userId);
     }
 
-    /**
-     * POST /api/bookings/check-conflict
-     *
-     * Lightweight pre-submit conflict check.
-     * Returns { "conflict": true/false, "detail": "..." }
-     * so the frontend can show inline feedback before the user submits.
-     *
-     * Does NOT create a booking — safe to call on every blur/change.
-     */
+    /** POST /api/bookings/check-conflict */
     @PostMapping("/check-conflict")
-    public Map<String, Object> checkConflict(
-        @Valid @RequestBody ConflictCheckRequest request
-    ) {
+    public Map<String, Object> checkConflict(@Valid @RequestBody ConflictCheckRequest request) {
         Booking hit = service.firstConflict(request);
-        if (hit == null) {
-            return Map.of("conflict", false);
-        }
+        if (hit == null) return Map.of("conflict", false);
         return Map.of(
             "conflict", true,
-            "detail",   "Already booked %s–%s on %s (status: %s)."
-                            .formatted(
-                                hit.getStartTime(),
-                                hit.getEndTime(),
-                                hit.getDate(),
-                                hit.getStatus()
-                            )
+            "detail", "Already booked %s-%s on %s (status: %s)."
+                .formatted(hit.getStartTime(), hit.getEndTime(), hit.getDate(), hit.getStatus())
         );
     }
 
-    /** POST /api/bookings — create a booking */
+    /** POST /api/bookings */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Booking create(@Valid @RequestBody BookingRequest request) {
         return service.create(request);
     }
 
-    /**
-     * DELETE /api/bookings/{id}?userId={userId} — cancel a booking
-     *
-     * Uses DELETE semantics: cancelling is the user's way of removing
-     * a booking from their schedule. The userId query param identifies
-     * the requesting user (replace with JWT principal when auth is added).
-     */
+    /** DELETE /api/bookings/{id}?userId={userId} */
     @DeleteMapping("/{id}")
-    public Booking cancel(
-        @PathVariable Long id,
-        @RequestParam String userId
-    ) {
+    public Booking cancel(@PathVariable String id, @RequestParam String userId) {
         return service.cancel(id, userId);
     }
 
-    /** PATCH /api/bookings/{id}/status — approve / reject (admin) */
+    /** PATCH /api/bookings/{id}/status */
     @PatchMapping("/{id}/status")
-    public Booking updateStatus(
-        @PathVariable Long id,
-        @Valid @RequestBody StatusUpdateRequest request
-    ) {
+    public Booking updateStatus(@PathVariable String id,
+                                @Valid @RequestBody StatusUpdateRequest request) {
         return service.updateStatus(id, request.status());
     }
 }

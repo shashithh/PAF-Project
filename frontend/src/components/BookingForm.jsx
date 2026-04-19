@@ -1,5 +1,4 @@
 import React from 'react'
-import { resources } from '../data/mockBookings.js'
 import {
   useBookingForm,
   PURPOSE_MAX,
@@ -11,6 +10,7 @@ import {
 } from '../hooks/useBookingForm.js'
 import '../styles/form.css'
 
+// Icon map keyed by resource id — falls back to 📦 for unknown resources
 const RESOURCE_ICONS = {
   r1: '🖥️',
   r2: '🖥️',
@@ -39,6 +39,7 @@ function BookingForm({ currentUser }) {
     handleSubmit,
     reset,
     dismissConflictWarn,
+    resources,
     selectedResource,
     duration,
     durationMins,
@@ -47,12 +48,9 @@ function BookingForm({ currentUser }) {
     purposeLength,
   } = useBookingForm(currentUser)
 
-  // True when a live conflict warning is active (not yet dismissed, not a submit error)
-  const hasLiveConflict  = Boolean(conflictWarn && !errors.conflict)
-  // True when a hard conflict error was returned at submit time
+  const hasLiveConflict   = Boolean(conflictWarn && !errors.conflict)
   const hasSubmitConflict = Boolean(errors.conflict)
-  // Disable submit while checking or while a live conflict is unresolved
-  const submitBlocked = submitting || submitted || checkingConflict || hasLiveConflict
+  const submitBlocked     = submitting || submitted || checkingConflict || hasLiveConflict
 
   return (
     <form className="booking-form" onSubmit={handleSubmit} noValidate>

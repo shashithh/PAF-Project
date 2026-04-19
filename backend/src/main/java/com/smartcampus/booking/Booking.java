@@ -1,20 +1,20 @@
 package com.smartcampus.booking;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-@Entity
-@Table(name = "bookings")
+@Document(collection = "bookings")
 public class Booking {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @NotBlank
     private String userId;
@@ -38,19 +38,15 @@ public class Booking {
     private LocalTime endTime;
 
     @NotBlank
-    @Column(length = 500)
     private String purpose;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private BookingStatus status = BookingStatus.PENDING;
 
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     // ── Getters ──────────────────────────────────────────────
 
-    public Long getId()                  { return id; }
+    public String getId()                { return id; }
     public String getUserId()            { return userId; }
     public String getUserName()          { return userName; }
     public String getResourceId()        { return resourceId; }
@@ -64,6 +60,7 @@ public class Booking {
 
     // ── Setters ──────────────────────────────────────────────
 
+    public void setId(String id)                    { this.id = id; }
     public void setUserId(String userId)            { this.userId = userId; }
     public void setUserName(String userName)        { this.userName = userName; }
     public void setResourceId(String resourceId)    { this.resourceId = resourceId; }
@@ -73,4 +70,5 @@ public class Booking {
     public void setEndTime(LocalTime endTime)       { this.endTime = endTime; }
     public void setPurpose(String purpose)          { this.purpose = purpose; }
     public void setStatus(BookingStatus status)     { this.status = status; }
+    public void setCreatedAt(LocalDateTime createdAt){ this.createdAt = createdAt; }
 }
