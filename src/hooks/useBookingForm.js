@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { resources } from '../data/mockBookings.js'
 import { useBookingContext } from '../context/BookingContext.jsx'
+import { submitBooking, createBookingPayload } from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Constants
@@ -144,13 +145,17 @@ const TIME_RULES = [
    useBookingForm
    ══════════════════════════════════════ */
 export function useBookingForm(currentUser) {
-  const { bookings, addBooking, notify } = useBookingContext()
+  const { bookings, addBooking, reportSubmitError, notify } = useBookingContext()
 
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [errors,     setErrors]     = useState({})
-  const [touched,    setTouched]    = useState({})   // tracks blurred fields
+  const [touched,    setTouched]    = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
+  const [submitErr,  setSubmitErr]  = useState(null)
+
+  // Ref-based guard: prevents a second submission while one is in-flight
+  const inFlight = useRef(false)
 
   /* ── Mark field as touched on blur ── */
   const handleBlur = useCallback((e) => {

@@ -6,18 +6,20 @@ import React, {
   useCallback,
   useMemo,
 } from 'react'
-import { mockBookings } from '../data/mockBookings.js'
+import { fetchBookings } from '../services/bookingService.js'
 
 /* ══════════════════════════════════════
    Action types
    ══════════════════════════════════════ */
 export const ACTIONS = {
-  LOAD_START:    'LOAD_START',
-  LOAD_SUCCESS:  'LOAD_SUCCESS',
-  ADD_BOOKING:   'ADD_BOOKING',
-  UPDATE_STATUS: 'UPDATE_STATUS',
-  SHOW_TOAST:    'SHOW_TOAST',
-  HIDE_TOAST:    'HIDE_TOAST',
+  LOAD_START:        'LOAD_START',
+  LOAD_SUCCESS:      'LOAD_SUCCESS',
+  LOAD_ERROR:        'LOAD_ERROR',
+  ADD_BOOKING:       'ADD_BOOKING',
+  ADD_BOOKING_ERROR: 'ADD_BOOKING_ERROR',
+  UPDATE_STATUS:     'UPDATE_STATUS',
+  SHOW_TOAST:        'SHOW_TOAST',
+  HIDE_TOAST:        'HIDE_TOAST',
 }
 
 /* ══════════════════════════════════════
@@ -26,12 +28,13 @@ export const ACTIONS = {
 const initialState = {
   bookings:    [],
   loading:     true,
-  error:       null,
-  toast:       null,   // { message, type: 'success' | 'error' }
+  error:       null,          // load error
+  submitError: null,          // booking creation error
+  toast:       null,          // { message, type: 'success' | 'error' }
 }
 
 /* ══════════════════════════════════════
-   Reducer — pure, testable
+   Reducer
    ══════════════════════════════════════ */
 function bookingReducer(state, action) {
   switch (action.type) {
@@ -42,11 +45,18 @@ function bookingReducer(state, action) {
     case ACTIONS.LOAD_SUCCESS:
       return { ...state, loading: false, bookings: action.payload }
 
+    case ACTIONS.LOAD_ERROR:
+      return { ...state, loading: false, error: action.payload }
+
     case ACTIONS.ADD_BOOKING:
       return {
         ...state,
+        submitError: null,
         bookings: [action.payload, ...state.bookings],
       }
+
+    case ACTIONS.ADD_BOOKING_ERROR:
+      return { ...state, submitError: action.payload }
 
     case ACTIONS.UPDATE_STATUS:
       return {
@@ -81,15 +91,21 @@ export function BookingProvider({ children }) {
   const [state, dispatch] = useReducer(bookingReducer, initialState)
 
   // ── Load bookings on mount ──────────────────────────────────
-  // Swap the setTimeout body for a real fetch() when backend is ready:
-  //   const data = await fetch('/api/bookings').then(r => r.json())
-  //   dispatch({ type: ACTIONS.LOAD_SUCCESS, payload: data })
   useEffect(() => {
+    let cancelled = false
     dispatch({ type: ACTIONS.LOAD_START })
-    const timer = setTimeout(() => {
-      dispatch({ type: ACTIONS.LOAD_SUCCESS, payload: mockBookings })
-    }, 400)
-    return () => clearTimeout(timer)
+
+    fetchBookings()
+      .then((data) => {
+        if (!cancelled)
+          dispatch({ type: ACTIONS.LOAD_SUCCESS, payload: data })
+      })
+      .catch((err) => {
+        if (!cancelled)
+          dispatch({ type: ACTIONS.LOAD_ERROR, payload: err.message })
+      })
+
+    return () => { cancelled = true }
   }, [])
 
   // ── Toast auto-dismiss ──────────────────────────────────────
@@ -103,8 +119,20 @@ export function BookingProvider({ children }) {
   }, [state.toast])
 
   // ── Action creators ─────────────────────────────────────────
+
+  /**
+   * Called by useBookingForm after the service resolves.
+   * Receives the persisted booking returned by the server.
+   */
   const addBooking = useCallback((booking) => {
     dispatch({ type: ACTIONS.ADD_BOOKING, payload: booking })
+  }, [])
+
+  /**
+   * Called by useBookingForm if the service rejects.
+   */
+  const reportSubmitError = useCallback((message) => {
+    dispatch({ type: ACTIONS.ADD_BOOKING_ERROR, payload: message })
   }, [])
 
   const updateBookingStatus = useCallback((id, status) => {
@@ -115,7 +143,7 @@ export function BookingProvider({ children }) {
     dispatch({ type: ACTIONS.SHOW_TOAST, payload: { message, type } })
   }, [])
 
-  // ── Derived values (memoised) ───────────────────────────────
+  // ── Derived values ──────────────────────────────────────────
   const stats = useMemo(
     () =>
       state.bookings.reduce(
@@ -137,16 +165,15 @@ export function BookingProvider({ children }) {
   // ── Context value ───────────────────────────────────────────
   const value = useMemo(
     () => ({
-      // State
-      bookings:  state.bookings,
-      loading:   state.loading,
-      error:     state.error,
-      toast:     state.toast,
-      // Derived
+      bookings:     state.bookings,
+      loading:      state.loading,
+      error:        state.error,
+      submitError:  state.submitError,
+      toast:        state.toast,
       stats,
       getMyBookings,
-      // Actions
       addBooking,
+      reportSubmitError,
       updateBookingStatus,
       notify,
     }),
@@ -154,10 +181,12 @@ export function BookingProvider({ children }) {
       state.bookings,
       state.loading,
       state.error,
+      state.submitError,
       state.toast,
       stats,
       getMyBookings,
       addBooking,
+      reportSubmitError,
       updateBookingStatus,
       notify,
     ]
