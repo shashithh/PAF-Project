@@ -154,6 +154,7 @@ export function useBookingForm(currentUser) {
   const [submitted,     setSubmitted]     = useState(false)
   const [submitErr,     setSubmitErr]     = useState(null)
   const [conflictWarn,  setConflictWarn]  = useState(null)  // live async conflict message
+  const [checkingConflict, setCheckingConflict] = useState(false) // async check in-flight
 
   // Ref-based guard: prevents a second submission while one is in-flight
   const inFlight = useRef(false)
@@ -172,6 +173,7 @@ export function useBookingForm(currentUser) {
     setForm((current) => {
       const { resourceId, date, startTime, endTime } = current
       if (resourceId && date && startTime && endTime && endTime > startTime) {
+        setCheckingConflict(true)
         checkConflict({ resourceId, date, startTime, endTime })
           .then((result) => {
             setConflictWarn(result.conflict ? result.detail : null)
@@ -180,6 +182,7 @@ export function useBookingForm(currentUser) {
             // Silently ignore network errors on the live check;
             // the submit will catch them authoritatively
           })
+          .finally(() => setCheckingConflict(false))
       } else {
         setConflictWarn(null)
       }
@@ -273,7 +276,19 @@ export function useBookingForm(currentUser) {
     setSubmitErr(null)
     setSubmitted(false)
     setConflictWarn(null)
+    setCheckingConflict(false)
     inFlight.current = false
+  }, [])
+
+  /* ── Dismiss live conflict warning (user acknowledged, wants to try new times) ── */
+  const dismissConflictWarn = useCallback(() => {
+    setConflictWarn(null)
+    setErrors((prev) => {
+      if (!prev.conflict) return prev
+      const next = { ...prev }
+      delete next.conflict
+      return next
+    })
   }, [])
 
   /* ── Submit ── */
@@ -381,10 +396,12 @@ export function useBookingForm(currentUser) {
     submitted,
     submitErr,
     conflictWarn,
+    checkingConflict,
     handleChange,
     handleBlur,
     handleSubmit,
     reset,
+    dismissConflictWarn,
     selectedResource,
     duration,
     durationMins,

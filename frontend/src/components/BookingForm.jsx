@@ -19,7 +19,6 @@ const RESOURCE_ICONS = {
   r5: '📽️',
 }
 
-/** Convert 24-h hour number → "H am/pm" label */
 function fmtHour(h) {
   const ampm = h < 12 ? 'am' : 'pm'
   return `${h % 12 || 12}${ampm}`
@@ -33,10 +32,13 @@ function BookingForm({ currentUser }) {
     submitting,
     submitted,
     submitErr,
+    conflictWarn,
+    checkingConflict,
     handleChange,
     handleBlur,
     handleSubmit,
     reset,
+    dismissConflictWarn,
     selectedResource,
     duration,
     durationMins,
@@ -44,6 +46,13 @@ function BookingForm({ currentUser }) {
     showPreview,
     purposeLength,
   } = useBookingForm(currentUser)
+
+  // True when a live conflict warning is active (not yet dismissed, not a submit error)
+  const hasLiveConflict  = Boolean(conflictWarn && !errors.conflict)
+  // True when a hard conflict error was returned at submit time
+  const hasSubmitConflict = Boolean(errors.conflict)
+  // Disable submit while checking or while a live conflict is unresolved
+  const submitBlocked = submitting || submitted || checkingConflict || hasLiveConflict
 
   return (
     <form className="booking-form" onSubmit={handleSubmit} noValidate>
@@ -114,18 +123,27 @@ function BookingForm({ currentUser }) {
           )}
         </div>
 
+        {/* Resource chip — availability reflects conflict state */}
         {selectedResource && (
-          <div className="resource-chip">
+          <div className={`resource-chip ${hasLiveConflict || hasSubmitConflict ? 'resource-chip-conflict' : ''}`}>
             <span className="resource-chip-icon" aria-hidden="true">
               {RESOURCE_ICONS[selectedResource.id] ?? '📦'}
             </span>
             <span className="resource-chip-name">{selectedResource.name}</span>
             {selectedResource.capacity && (
-              <span className="resource-chip-meta">
-                Cap. {selectedResource.capacity}
-              </span>
+              <span className="resource-chip-meta">Cap. {selectedResource.capacity}</span>
             )}
-            <span className="resource-chip-badge">Available</span>
+            {checkingConflict ? (
+              <span className="resource-chip-badge resource-chip-checking">
+                <span className="spinner-sm" aria-hidden="true" /> Checking…
+              </span>
+            ) : hasLiveConflict || hasSubmitConflict ? (
+              <span className="resource-chip-badge resource-chip-unavailable">
+                Unavailable
+              </span>
+            ) : (
+              <span className="resource-chip-badge">Available</span>
+            )}
           </div>
         )}
       </fieldset>
@@ -136,7 +154,6 @@ function BookingForm({ currentUser }) {
           <span className="section-step">2</span> Date &amp; Time
         </legend>
 
-        {/* Operating hours hint */}
         <p className="field-hint">
           Bookings available {fmtHour(OPERATING_START)} – {fmtHour(OPERATING_END)},
           {' '}{MIN_DURATION_MINS} min – {formatDuration(MAX_DURATION_MINS)} per session.
@@ -173,7 +190,7 @@ function BookingForm({ currentUser }) {
               onChange={handleChange}
               onBlur={handleBlur}
               min={`${String(OPERATING_START).padStart(2, '0')}:00`}
-              max={`${String(OPERATING_END  ).padStart(2, '0')}:00`}
+              max={`${String(OPERATING_END).padStart(2, '0')}:00`}
               className={errors.startTime ? 'input-error' : ''}
               aria-describedby={errors.startTime ? 'startTime-error' : 'time-constraints'}
               aria-invalid={!!errors.startTime}
@@ -208,7 +225,7 @@ function BookingForm({ currentUser }) {
           </div>
         </div>
 
-        {/* Duration feedback — shown as soon as both times are valid */}
+        {/* Duration feedback */}
         {durationMins !== null && (
           <div
             id="time-constraints"
@@ -218,18 +235,13 @@ function BookingForm({ currentUser }) {
                 : 'duration-hint-ok'
             }`}
           >
-            {durationMins < MIN_DURATION_MINS ? '⚠️' :
-             durationMins > MAX_DURATION_MINS ? '⚠️' : '🕐'}{' '}
+            {durationMins < MIN_DURATION_MINS || durationMins > MAX_DURATION_MINS ? '⚠️' : '🕐'}{' '}
             Duration: <strong>{duration}</strong>
             {durationMins < MIN_DURATION_MINS && (
-              <span className="duration-rule">
-                {' '}· min {MIN_DURATION_MINS} min
-              </span>
+              <span className="duration-rule"> · min {MIN_DURATION_MINS} min</span>
             )}
             {durationMins > MAX_DURATION_MINS && (
-              <span className="duration-rule">
-                {' '}· max {formatDuration(MAX_DURATION_MINS)}
-              </span>
+              <span className="duration-rule"> · max {formatDuration(MAX_DURATION_MINS)}</span>
             )}
           </div>
         )}
@@ -261,14 +273,10 @@ function BookingForm({ currentUser }) {
               <span id="purpose-error" className="error-msg" role="alert">
                 {errors.purpose}
               </span>
-            ) : (
-              <span />
-            )}
+            ) : <span />}
             <span
               id="purpose-count"
-              className={`char-count ${
-                purposeLength >= PURPOSE_MAX * 0.9 ? 'char-count-warn' : ''
-              }`}
+              className={`char-count ${purposeLength >= PURPOSE_MAX * 0.9 ? 'char-count-warn' : ''}`}
               aria-live="polite"
             >
               {purposeLength}/{PURPOSE_MAX}
@@ -277,19 +285,48 @@ function BookingForm({ currentUser }) {
         </div>
       </fieldset>
 
-      {/* ── Conflict error ── */}
-      {errors.conflict && (
+      {/* ── Live conflict warning (amber — detected on blur, before submit) ── */}
+      {hasLiveConflict && (
+        <div className="conflict-warning" role="alert" aria-live="assertive">
+          <div className="conflict-warning-body">
+            <span className="conflict-warning-icon" aria-hidden="true">⚠️</span>
+            <div>
+              <strong>This slot is already taken</strong>
+              <p>{conflictWarn}</p>
+            </div>
+          </div>
+          <div className="conflict-warning-actions">
+            <p className="conflict-warning-hint">
+              Choose a different time or resource to continue.
+            </p>
+            <button
+              type="button"
+              className="btn-conflict-dismiss"
+              onClick={dismissConflictWarn}
+              aria-label="Dismiss conflict warning"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hard conflict error (red — returned at submit time) ── */}
+      {hasSubmitConflict && (
         <div className="error-banner" role="alert">
-          <span className="error-banner-icon">⚠️</span>
+          <span className="error-banner-icon">🚫</span>
           <div>
             <strong>Scheduling conflict</strong>
             <p>{errors.conflict}</p>
+            <p className="error-banner-hint">
+              Please select a different time slot or resource.
+            </p>
           </div>
         </div>
       )}
 
       {/* ── Server / submission error ── */}
-      {submitErr && !errors.conflict && (
+      {submitErr && !hasSubmitConflict && (
         <div className="error-banner" role="alert">
           <span className="error-banner-icon">🚫</span>
           <div>
@@ -300,7 +337,7 @@ function BookingForm({ currentUser }) {
       )}
 
       {/* ── Booking summary preview ── */}
-      {showPreview && !errors.conflict && !errors.startTime && !errors.endTime && (
+      {showPreview && !hasLiveConflict && !hasSubmitConflict && !errors.startTime && !errors.endTime && (
         <div className="booking-preview" aria-label="Booking summary">
           <p className="preview-label">Booking summary</p>
           <div className="preview-grid">
@@ -311,9 +348,7 @@ function BookingForm({ currentUser }) {
             <span className="preview-icon" aria-hidden="true">🕐</span>
             <span>
               {form.startTime} – {form.endTime}
-              {duration && (
-                <span className="preview-duration"> · {duration}</span>
-              )}
+              {duration && <span className="preview-duration"> · {duration}</span>}
             </span>
           </div>
         </div>
@@ -323,17 +358,29 @@ function BookingForm({ currentUser }) {
       <button
         type="submit"
         className="btn-primary"
-        disabled={submitting || submitted}
-        aria-busy={submitting}
+        disabled={submitBlocked}
+        aria-busy={submitting || checkingConflict}
+        aria-describedby={hasLiveConflict ? 'live-conflict-block' : undefined}
       >
         {submitting ? (
           <><span className="spinner" aria-hidden="true" /> Submitting…</>
+        ) : checkingConflict ? (
+          <><span className="spinner" aria-hidden="true" /> Checking availability…</>
         ) : submitted ? (
           '✅ Submitted'
+        ) : hasLiveConflict ? (
+          '⚠️ Slot unavailable'
         ) : (
           'Submit Booking'
         )}
       </button>
+
+      {/* Screen-reader description for blocked submit */}
+      {hasLiveConflict && (
+        <p id="live-conflict-block" className="sr-only">
+          Submit is disabled because this time slot has a conflict. Please choose different times.
+        </p>
+      )}
     </form>
   )
 }
