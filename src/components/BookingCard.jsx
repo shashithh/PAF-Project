@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useBookingContext } from '../context/BookingContext.jsx'
 import '../styles/card.css'
 
 /* ── Status config ─────────────────────────────────────────── */
@@ -40,7 +41,8 @@ function calcDuration(start, end) {
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-function BookingCard({ booking, onCancel, onApprove, onReject, showAdminControls }) {
+function BookingCard({ booking, showAdminControls = false }) {
+  const { updateBookingStatus, notify } = useBookingContext()
   const [confirmCancel, setConfirmCancel] = useState(false)
 
   const config    = STATUS_CONFIG[booking.status] || {}
@@ -48,41 +50,53 @@ function BookingCard({ booking, onCancel, onApprove, onReject, showAdminControls
   const duration  = calcDuration(booking.startTime, booking.endTime)
   const resIcon   = RESOURCE_ICONS[booking.resourceName] ?? '📦'
 
-  const handleCancelClick = () => {
+  /* ── Action handlers — dispatch directly to context ── */
+  const handleCancel = () => {
     if (confirmCancel) {
-      onCancel(booking.id)
+      updateBookingStatus(booking.id, 'CANCELLED')
+      notify('Booking cancelled.')
     } else {
       setConfirmCancel(true)
     }
   }
 
+  const handleApprove = () => {
+    updateBookingStatus(booking.id, 'APPROVED')
+    notify(`Booking for ${booking.resourceName} approved.`)
+  }
+
+  const handleReject = () => {
+    updateBookingStatus(booking.id, 'REJECTED')
+    notify(`Booking for ${booking.resourceName} rejected.`, 'error')
+  }
+
   return (
     <article className={`booking-card ${config.accent ?? ''}`}>
 
-      {/* ── Accent bar (top border colour by status) ── */}
+      {/* ── Accent bar ── */}
       <div className="card-accent-bar" aria-hidden="true" />
 
-      {/* ── Header: resource name + status badge ── */}
+      {/* ── Header ── */}
       <div className="card-header">
         <div className="card-resource-row">
           <span className="card-resource-icon" aria-hidden="true">{resIcon}</span>
           <h3 className="card-resource">{booking.resourceName}</h3>
         </div>
-        <span className={`status-badge ${config.className}`} aria-label={`Status: ${config.label}`}>
+        <span
+          className={`status-badge ${config.className}`}
+          aria-label={`Status: ${config.label}`}
+        >
           <span aria-hidden="true">{config.icon}</span> {config.label}
         </span>
       </div>
 
-      {/* ── Body: date, time, duration, purpose ── */}
+      {/* ── Body ── */}
       <div className="card-body">
         <div className="card-meta">
-          {/* Date */}
           <div className="card-detail">
             <span className="detail-icon" aria-hidden="true">📅</span>
             <span className="detail-text">{formatDate(booking.date)}</span>
           </div>
-
-          {/* Time + duration pill */}
           <div className="card-detail">
             <span className="detail-icon" aria-hidden="true">🕐</span>
             <span className="detail-text">
@@ -94,30 +108,36 @@ function BookingCard({ booking, onCancel, onApprove, onReject, showAdminControls
               </span>
             )}
           </div>
+          {/* Show submitter name in admin view */}
+          {showAdminControls && booking.userName && (
+            <div className="card-detail">
+              <span className="detail-icon" aria-hidden="true">👤</span>
+              <span className="detail-text">{booking.userName}</span>
+            </div>
+          )}
         </div>
 
-        {/* Purpose */}
         <div className="card-purpose-row">
           <span className="detail-icon" aria-hidden="true">📝</span>
           <p className="card-purpose">{booking.purpose}</p>
         </div>
       </div>
 
-      {/* ── Footer: booking ID + actions ── */}
+      {/* ── Footer ── */}
       <div className="card-footer">
         <span className="card-id" aria-label={`Booking ID: ${booking.id}`}>
           #{booking.id}
         </span>
 
         <div className="card-actions">
-          {/* ── User: cancel with confirm step ── */}
+          {/* User: cancel with confirm step */}
           {!showAdminControls && canCancel && (
             confirmCancel ? (
               <div className="confirm-row" role="group" aria-label="Confirm cancellation">
                 <span className="confirm-label">Cancel booking?</span>
                 <button
                   className="btn-confirm-yes"
-                  onClick={handleCancelClick}
+                  onClick={handleCancel}
                   aria-label="Yes, cancel this booking"
                 >
                   Yes
@@ -133,7 +153,7 @@ function BookingCard({ booking, onCancel, onApprove, onReject, showAdminControls
             ) : (
               <button
                 className="btn-cancel"
-                onClick={handleCancelClick}
+                onClick={handleCancel}
                 aria-label={`Cancel booking for ${booking.resourceName}`}
               >
                 Cancel
@@ -141,19 +161,19 @@ function BookingCard({ booking, onCancel, onApprove, onReject, showAdminControls
             )
           )}
 
-          {/* ── Admin: approve / reject ── */}
+          {/* Admin: approve / reject */}
           {showAdminControls && booking.status === 'PENDING' && (
             <>
               <button
                 className="btn-approve"
-                onClick={() => onApprove(booking.id)}
+                onClick={handleApprove}
                 aria-label={`Approve booking for ${booking.resourceName}`}
               >
                 ✓ Approve
               </button>
               <button
                 className="btn-reject"
-                onClick={() => onReject(booking.id)}
+                onClick={handleReject}
                 aria-label={`Reject booking for ${booking.resourceName}`}
               >
                 ✕ Reject

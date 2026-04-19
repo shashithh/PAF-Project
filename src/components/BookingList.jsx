@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import BookingCard from './BookingCard.jsx'
+import { useBookingContext } from '../context/BookingContext.jsx'
 import '../styles/list.css'
 
 /* ── Constants ─────────────────────────────────────────────── */
@@ -12,19 +13,18 @@ const STATUS_FILTERS = [
 ]
 
 const SORT_OPTIONS = [
-  { key: 'date-desc', label: 'Newest first'  },
-  { key: 'date-asc',  label: 'Oldest first'  },
-  { key: 'name-asc',  label: 'Resource A–Z'  },
-  { key: 'name-desc', label: 'Resource Z–A'  },
+  { key: 'date-desc', label: 'Newest first' },
+  { key: 'date-asc',  label: 'Oldest first' },
+  { key: 'name-asc',  label: 'Resource A–Z' },
+  { key: 'name-desc', label: 'Resource Z–A' },
 ]
 
-/* ── Empty-state messages per filter ───────────────────────── */
 const EMPTY_MESSAGES = {
-  ALL:       { icon: '📭', title: 'No bookings yet',          sub: 'Submitted bookings will appear here.' },
-  PENDING:   { icon: '⏳', title: 'No pending bookings',      sub: 'Nothing is waiting for approval.'     },
-  APPROVED:  { icon: '✅', title: 'No approved bookings',     sub: 'Approved bookings will show here.'    },
-  REJECTED:  { icon: '❌', title: 'No rejected bookings',     sub: 'Rejected bookings will show here.'    },
-  CANCELLED: { icon: '🚫', title: 'No cancelled bookings',    sub: 'Cancelled bookings will show here.'   },
+  ALL:       { icon: '📭', title: 'No bookings yet',       sub: 'Submitted bookings will appear here.' },
+  PENDING:   { icon: '⏳', title: 'No pending bookings',   sub: 'Nothing is waiting for approval.'     },
+  APPROVED:  { icon: '✅', title: 'No approved bookings',  sub: 'Approved bookings will show here.'    },
+  REJECTED:  { icon: '❌', title: 'No rejected bookings',  sub: 'Rejected bookings will show here.'    },
+  CANCELLED: { icon: '🚫', title: 'No cancelled bookings', sub: 'Cancelled bookings will show here.'   },
 }
 
 /* ── Sort helper ────────────────────────────────────────────── */
@@ -46,34 +46,57 @@ function sortBookings(list, sortKey) {
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-function BookingList({ bookings, loading = false, onCancel, onApprove, onReject, showAdminControls }) {
+
+/**
+ * BookingList
+ *
+ * Props:
+ *   scope            — 'user' | 'admin'
+ *                      'user'  → shows only the current user's bookings
+ *                      'admin' → shows all bookings with admin controls
+ *   currentUserId    — required when scope='user'
+ *   title            — optional heading rendered above the toolbar
+ */
+function BookingList({ scope = 'user', currentUserId, title }) {
+  const { bookings, loading } = useBookingContext()
+
   const [filter,   setFilter]   = useState('ALL')
   const [sort,     setSort]     = useState('date-desc')
-  const [viewMode, setViewMode] = useState('grid')   // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid')
 
-  /* counts per status for filter badges */
+  const showAdminControls = scope === 'admin'
+
+  /* ── Source list from context ── */
+  const sourceBookings = useMemo(() => {
+    if (scope === 'admin') return bookings
+    return bookings.filter((b) => b.userId === currentUserId)
+  }, [bookings, scope, currentUserId])
+
+  /* ── Per-status counts for filter badges ── */
   const counts = useMemo(() => {
-    const map = { ALL: bookings.length }
-    bookings.forEach((b) => {
+    const map = { ALL: sourceBookings.length }
+    sourceBookings.forEach((b) => {
       map[b.status] = (map[b.status] ?? 0) + 1
     })
     return map
-  }, [bookings])
+  }, [sourceBookings])
 
-  /* filtered + sorted list */
+  /* ── Filtered + sorted display list ── */
   const displayed = useMemo(() => {
-    const filtered = filter === 'ALL'
-      ? bookings
-      : bookings.filter((b) => b.status === filter)
+    const filtered =
+      filter === 'ALL'
+        ? sourceBookings
+        : sourceBookings.filter((b) => b.status === filter)
     return sortBookings(filtered, sort)
-  }, [bookings, filter, sort])
+  }, [sourceBookings, filter, sort])
 
   const empty = EMPTY_MESSAGES[filter]
 
-  // Loading skeleton
+  /* ── Loading skeleton ── */
   if (loading) {
     return (
       <section className="booking-list" aria-label="Bookings list" aria-busy="true">
+        {title && <h2 className="section-title">{title}</h2>}
         <div className="skeleton-toolbar">
           <div className="skeleton skeleton-bar" />
           <div className="skeleton skeleton-bar skeleton-bar-sm" />
@@ -94,6 +117,8 @@ function BookingList({ bookings, loading = false, onCancel, onApprove, onReject,
 
   return (
     <section className="booking-list" aria-label="Bookings list">
+
+      {title && <h2 className="section-title">{title}</h2>}
 
       {/* ── Toolbar ── */}
       <div className="list-toolbar">
@@ -159,7 +184,9 @@ function BookingList({ bookings, loading = false, onCancel, onApprove, onReject,
         <p className="result-count" aria-live="polite">
           Showing <strong>{displayed.length}</strong>{' '}
           {displayed.length === 1 ? 'booking' : 'bookings'}
-          {filter !== 'ALL' && <> · <span className="result-filter-tag">{filter.toLowerCase()}</span></>}
+          {filter !== 'ALL' && (
+            <> · <span className="result-filter-tag">{filter.toLowerCase()}</span></>
+          )}
         </p>
       )}
 
@@ -176,9 +203,6 @@ function BookingList({ bookings, loading = false, onCancel, onApprove, onReject,
             <BookingCard
               key={booking.id}
               booking={booking}
-              onCancel={onCancel}
-              onApprove={onApprove}
-              onReject={onReject}
               showAdminControls={showAdminControls}
             />
           ))}

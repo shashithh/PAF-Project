@@ -3,18 +3,7 @@ import BookingList from '../components/BookingList.jsx'
 import { useBookingContext } from '../context/BookingContext.jsx'
 
 function AdminPage() {
-  const { bookings, loading, stats, updateBookingStatus, notify } =
-    useBookingContext()
-
-  const handleApprove = (id) => {
-    updateBookingStatus(id, 'APPROVED')
-    notify('Booking approved.')
-  }
-
-  const handleReject = (id) => {
-    updateBookingStatus(id, 'REJECTED')
-    notify('Booking rejected.', 'error')
-  }
+  const { stats } = useBookingContext()
 
   return (
     <div className="page">
@@ -23,7 +12,7 @@ function AdminPage() {
         <p className="page-subtitle">Review and manage all campus bookings.</p>
       </div>
 
-      {/* Stats — reactive: update instantly when status changes */}
+      {/* Stats — reactive: numbers update the moment a status changes */}
       <div className="admin-stats">
         <div className="stat-card">
           <span className="stat-number">{stats.TOTAL}</span>
@@ -43,13 +32,7 @@ function AdminPage() {
         </div>
       </div>
 
-      <BookingList
-        bookings={bookings}
-        loading={loading}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        showAdminControls={true}
-      />
+      <BookingList scope="admin" />
     </div>
   )
 }
