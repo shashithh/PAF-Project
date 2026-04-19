@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { resources } from '../data/mockBookings.js'
+import { useBookingContext } from '../context/BookingContext.jsx'
 import '../styles/form.css'
 
 // Icon map for resource types — extend as needed
@@ -13,7 +14,8 @@ const RESOURCE_ICONS = {
 
 const PURPOSE_MAX = 200
 
-function BookingForm({ bookings, currentUser, onAddBooking, onNotify }) {
+function BookingForm({ currentUser }) {
+  const { bookings, addBooking, notify } = useBookingContext()
   const [form, setForm] = useState({
     resourceId: '',
     date: '',
@@ -100,8 +102,8 @@ function BookingForm({ bookings, currentUser, onAddBooking, onNotify }) {
       status: 'PENDING',
     }
 
-    onAddBooking(newBooking)
-    onNotify('Booking submitted successfully!')
+    addBooking(newBooking)
+    notify('Booking submitted successfully!')
     setSubmitted(true)
     setLoading(false)
 

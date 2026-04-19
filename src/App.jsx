@@ -1,40 +1,26 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
 import BookingPage from './pages/BookingPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
-import { useBookings } from './hooks/useBookings.js'
+import { useBookingContext } from './context/BookingContext.jsx'
 
-// Mock current user — swap to any mockUsers entry to test different roles/views
-// { id: 'u1', name: 'Alice Tan', role: 'USER'  }
+// Mock current user — swap to test different roles:
+// { id: 'u1', name: 'Alice Tan',  role: 'USER'  }
 // { id: 'u5', name: 'Eve Rahman', role: 'ADMIN' }
 const currentUser = { id: 'u1', name: 'Alice Tan', role: 'USER' }
 
 function App() {
-  const {
-    bookings,
-    loading,
-    addBooking,
-    updateBookingStatus,
-    getMyBookings,
-    stats,
-  } = useBookings()
-
-  const [notification, setNotification] = useState(null)
-
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type })
-    setTimeout(() => setNotification(null), 3000)
-  }
+  const { toast } = useBookingContext()
 
   return (
     <div className="app">
       <Navbar currentUser={currentUser} />
 
-      {/* Global notification toast */}
-      {notification && (
-        <div className={`notification notification-${notification.type}`}>
-          {notification.type === 'success' ? '✅' : '❌'} {notification.message}
+      {/* Global notification toast — state lives in context */}
+      {toast && (
+        <div className={`notification notification-${toast.type}`} role="status" aria-live="polite">
+          {toast.type === 'success' ? '✅' : '❌'} {toast.message}
         </div>
       )}
 
@@ -42,33 +28,16 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={
-              <BookingPage
-                bookings={bookings}
-                myBookings={getMyBookings(currentUser.id)}
-                loading={loading}
-                currentUser={currentUser}
-                onAddBooking={addBooking}
-                onUpdateStatus={updateBookingStatus}
-                onNotify={showNotification}
-              />
-            }
+            element={<BookingPage currentUser={currentUser} />}
           />
           <Route
             path="/admin"
             element={
               currentUser.role === 'ADMIN'
-                ? <AdminPage
-                    bookings={bookings}
-                    loading={loading}
-                    stats={stats}
-                    onUpdateStatus={updateBookingStatus}
-                    onNotify={showNotification}
-                  />
+                ? <AdminPage />
                 : <Navigate to="/" replace />
             }
           />
-          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

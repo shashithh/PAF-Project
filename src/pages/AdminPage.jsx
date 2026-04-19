@@ -1,15 +1,19 @@
 import React from 'react'
 import BookingList from '../components/BookingList.jsx'
+import { useBookingContext } from '../context/BookingContext.jsx'
 
-function AdminPage({ bookings, loading, stats, onUpdateStatus, onNotify }) {
+function AdminPage() {
+  const { bookings, loading, stats, updateBookingStatus, notify } =
+    useBookingContext()
+
   const handleApprove = (id) => {
-    onUpdateStatus(id, 'APPROVED')
-    onNotify('Booking approved.')
+    updateBookingStatus(id, 'APPROVED')
+    notify('Booking approved.')
   }
 
   const handleReject = (id) => {
-    onUpdateStatus(id, 'REJECTED')
-    onNotify('Booking rejected.', 'error')
+    updateBookingStatus(id, 'REJECTED')
+    notify('Booking rejected.', 'error')
   }
 
   return (
@@ -19,7 +23,7 @@ function AdminPage({ bookings, loading, stats, onUpdateStatus, onNotify }) {
         <p className="page-subtitle">Review and manage all campus bookings.</p>
       </div>
 
-      {/* Stats row — driven by live state via useBookings */}
+      {/* Stats — reactive: update instantly when status changes */}
       <div className="admin-stats">
         <div className="stat-card">
           <span className="stat-number">{stats.TOTAL}</span>

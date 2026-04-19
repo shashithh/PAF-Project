@@ -1,19 +1,17 @@
 import React from 'react'
 import BookingForm from '../components/BookingForm.jsx'
 import BookingList from '../components/BookingList.jsx'
+import { useBookingContext } from '../context/BookingContext.jsx'
 
-function BookingPage({
-  bookings,
-  myBookings,
-  loading,
-  currentUser,
-  onAddBooking,
-  onUpdateStatus,
-  onNotify,
-}) {
+function BookingPage({ currentUser }) {
+  const { bookings, loading, getMyBookings, updateBookingStatus, notify } =
+    useBookingContext()
+
+  const myBookings = getMyBookings(currentUser.id)
+
   const handleCancel = (id) => {
-    onUpdateStatus(id, 'CANCELLED')
-    onNotify('Booking cancelled.')
+    updateBookingStatus(id, 'CANCELLED')
+    notify('Booking cancelled.')
   }
 
   return (
@@ -28,12 +26,7 @@ function BookingPage({
       <div className="page-layout">
         {/* Left: booking form */}
         <section className="form-section">
-          <BookingForm
-            bookings={bookings}
-            currentUser={currentUser}
-            onAddBooking={onAddBooking}
-            onNotify={onNotify}
-          />
+          <BookingForm currentUser={currentUser} />
         </section>
 
         {/* Right: my bookings */}

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { BookingProvider } from './context/BookingContext.jsx'
 
 // Global styles — order matters:
 // 1. index.css  → reset, tokens, base typography
@@ -15,7 +16,9 @@ import App from './App.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <BookingProvider>
+        <App />
+      </BookingProvider>
     </BrowserRouter>
   </StrictMode>,
 )
