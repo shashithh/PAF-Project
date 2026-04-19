@@ -8,6 +8,7 @@ import './index.css'
 import './App.css'
 import './styles/layout.css'
 import './styles/status.css'
+import './styles/animations.css'
 
 import App from './App.jsx'
 

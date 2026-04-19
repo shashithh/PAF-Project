@@ -18,13 +18,24 @@
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  overflow: hidden;                   /* clips the accent bar */
-  transition: transform var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+  /* Enter animation — cards slide up when they first appear */
+  animation: fadeUp var(--dur-base, 220ms) var(--ease-out, cubic-bezier(0,0,.2,1)) both;
+  transition:
+    transform  var(--transition-fast, 150ms),
+    box-shadow var(--transition-fast, 150ms),
+    border-color var(--transition-base, 220ms),
+    opacity    var(--transition-base, 220ms);
 }
 
 .booking-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
+}
+
+.booking-card:hover .card-resource-icon {
+  transform: scale(1.15);
+  transition: transform var(--transition-fast, 150ms) var(--ease-spring, cubic-bezier(.34,1.56,.64,1));
 }
 
 /* ── Accent bar — rules live in status.css ── */
@@ -54,6 +65,8 @@
   font-size: 1.25rem;
   flex-shrink: 0;
   line-height: 1;
+  transition: transform var(--transition-fast, 150ms);
+  display: inline-block;
 }
 
 .card-resource {
@@ -214,9 +227,12 @@
   font-size: .82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition),
-              background var(--transition), color var(--transition),
-              border-color var(--transition), box-shadow var(--transition);
+  transition:
+    background     var(--transition-fast, 150ms),
+    color          var(--transition-fast, 150ms),
+    border-color   var(--transition-fast, 150ms),
+    box-shadow     var(--transition-fast, 150ms),
+    transform      var(--transition-fast, 150ms);
   white-space: nowrap;
 }
 
@@ -225,6 +241,14 @@
 .btn-reject:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+/* Press micro-interaction */
+.btn-cancel:active,
+.btn-approve:active,
+.btn-reject:active {
+  transform: scale(0.96) translateY(0);
+  box-shadow: none;
 }
 
 .btn-cancel:disabled,
@@ -240,7 +264,7 @@
   display: flex;
   align-items: center;
   gap: .4rem;
-  animation: fadeIn .15s ease;
+  animation: scaleIn var(--dur-fast, 150ms) var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both;
 }
 
 .confirm-label {
@@ -324,8 +348,4 @@
 
 /* empty-state rules live in list.css */
 
-/* ── Animations ── */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* fadeIn and spin keyframes live in animations.css */

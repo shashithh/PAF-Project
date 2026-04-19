@@ -23,6 +23,7 @@
 .page {
   display: flex;
   flex-direction: column;
+  animation: fadeUp var(--dur-slow, 350ms) var(--ease-out, cubic-bezier(0,0,.2,1)) both;
 }
 
 /* ── Page header ── */
@@ -78,7 +79,7 @@
   font-weight: 500;
   box-shadow: var(--shadow-md);
   z-index: 300;
-  animation: toastIn .25s ease;
+  animation: toastIn var(--dur-base, 220ms) var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both;
   max-width: 360px;
 }
 
@@ -94,10 +95,7 @@
   border: 1px solid #fecaca;
 }
 
-@keyframes toastIn {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
+/* toastIn keyframe lives in animations.css */
 
 /* ── Admin stats row ── */
 .admin-stats {
@@ -123,12 +121,21 @@
   flex-direction: column;
   align-items: center;
   gap: .3rem;
-  transition: box-shadow var(--transition), transform var(--transition);
+  transition:
+    box-shadow var(--transition-fast, 150ms),
+    transform  var(--transition-fast, 150ms),
+    border-color var(--transition-base, 220ms);
+  animation: scaleIn var(--dur-base, 220ms) var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both;
 }
+
+.stat-card:nth-child(1) { animation-delay:   0ms; }
+.stat-card:nth-child(2) { animation-delay:  60ms; }
+.stat-card:nth-child(3) { animation-delay: 120ms; }
+.stat-card:nth-child(4) { animation-delay: 180ms; }
 
 .stat-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.01);
 }
 
 .stat-number {
@@ -136,6 +143,7 @@
   font-weight: 800;
   color: var(--color-primary);
   line-height: 1;
+  transition: color var(--transition-base, 220ms);
 }
 
 .stat-label {

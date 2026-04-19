@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  animation: fadeUp var(--dur-slow, 350ms) var(--ease-out, cubic-bezier(0,0,.2,1)) both;
 }
 
 /* ── Header ── */
@@ -154,7 +155,10 @@
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-bg);
-  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  transition:
+    border-color var(--transition-fast, 150ms),
+    box-shadow   var(--transition-fast, 150ms),
+    background   var(--transition-fast, 150ms);
   outline: none;
   width: 100%;
 }
@@ -165,6 +169,13 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(79, 110, 247, .15);
   background: #fff;
+}
+
+/* Hover state — subtle border lift before focus */
+.form-group input:hover:not(:focus),
+.form-group select:hover:not(:focus),
+.form-group textarea:hover:not(:focus) {
+  border-color: #a5b4fc;
 }
 
 .form-group textarea {
@@ -509,7 +520,10 @@
   font-size: .95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  transition:
+    background   var(--transition-fast, 150ms),
+    transform    var(--transition-fast, 150ms),
+    box-shadow   var(--transition-fast, 150ms);
   margin-top: .25rem;
 }
 
@@ -517,6 +531,11 @@
   background: var(--color-primary-h);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(79, 110, 247, .35);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98) translateY(0);
+  box-shadow: none;
 }
 
 .btn-primary:disabled {
@@ -537,11 +556,12 @@
   flex-shrink: 0;
 }
 
-/* ── Animations ── */
+/* ── Animations — keyframes live in animations.css ── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
+/* Local fadeIn alias for banners/chips that appear inline */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }

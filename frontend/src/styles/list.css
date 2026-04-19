@@ -37,14 +37,23 @@
   font-size: .82rem;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color var(--transition), color var(--transition),
-              background var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition-fast, 150ms),
+    color        var(--transition-fast, 150ms),
+    background   var(--transition-fast, 150ms),
+    box-shadow   var(--transition-fast, 150ms),
+    transform    var(--transition-fast, 150ms);
   white-space: nowrap;
 }
 
 .filter-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.filter-btn:active {
+  transform: scale(0.96);
 }
 
 .filter-active {
@@ -232,12 +241,15 @@
   padding: 3.5rem 1rem;
   color: var(--color-muted);
   text-align: center;
+  animation: fadeUp var(--dur-slow, 350ms) var(--ease-out, cubic-bezier(0,0,.2,1)) both;
 }
 
 .empty-icon {
   font-size: 2.75rem;
   margin-bottom: .75rem;
   line-height: 1;
+  animation: popIn var(--dur-slower, 500ms) var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both;
+  animation-delay: 100ms;
 }
 
 .empty-title {
@@ -296,10 +308,7 @@
 .skeleton-line-title { height: 18px; width: 70%; }
 .skeleton-line-sm    { width: 50%; }
 
-@keyframes shimmer {
-  0%   { background-position:  200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* shimmer and spin keyframes live in animations.css */
 
 /* ── List title ── */
 .list-title {
