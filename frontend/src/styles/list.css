@@ -149,16 +149,7 @@
   color: var(--color-text);
 }
 
-.result-filter-tag {
-  display: inline-block;
-  background: #eef1fd;
-  color: var(--color-primary);
-  border-radius: 4px;
-  padding: 0 .4rem;
-  font-size: .78rem;
-  font-weight: 600;
-  text-transform: capitalize;
-}
+/* result-filter-tag colors live in status.css */
 
 /* ── Grid view ── */
 .cards-grid {
@@ -187,11 +178,7 @@
   align-self: stretch;
 }
 
-/* override accent-bar direction for list mode */
-.cards-list .accent-approved  .card-accent-bar { background: #22c55e; }
-.cards-list .accent-pending   .card-accent-bar { background: #f59e0b; }
-.cards-list .accent-rejected  .card-accent-bar { background: #ef4444; }
-.cards-list .accent-cancelled .card-accent-bar { background: #d1d5db; }
+/* accent-bar colors in list view — live in status.css */
 
 .cards-list .card-header {
   flex: 0 0 200px;

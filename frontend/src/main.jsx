@@ -7,6 +7,7 @@ import { BookingProvider } from './context/BookingContext.jsx'
 import './index.css'
 import './App.css'
 import './styles/layout.css'
+import './styles/status.css'
 
 import App from './App.jsx'
 

@@ -24,15 +24,15 @@ function AdminPage() {
           <span className="stat-number">{stats.TOTAL}</span>
           <span className="stat-label">Total</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-pending">
           <span className="stat-number">{stats.PENDING}</span>
           <span className="stat-label">Pending</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-approved">
           <span className="stat-number">{stats.APPROVED}</span>
           <span className="stat-label">Approved</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card stat-card-rejected">
           <span className="stat-number">{stats.REJECTED}</span>
           <span className="stat-label">Rejected</span>
         </div>

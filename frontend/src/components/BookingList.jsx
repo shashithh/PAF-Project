@@ -5,11 +5,11 @@ import '../styles/list.css'
 
 /* ── Constants ─────────────────────────────────────────────── */
 const STATUS_FILTERS = [
-  { key: 'ALL',       label: 'All',       icon: '📋' },
-  { key: 'PENDING',   label: 'Pending',   icon: '⏳' },
-  { key: 'APPROVED',  label: 'Approved',  icon: '✅' },
-  { key: 'REJECTED',  label: 'Rejected',  icon: '❌' },
-  { key: 'CANCELLED', label: 'Cancelled', icon: '🚫' },
+  { key: 'ALL',       label: 'All',       icon: '📋', colorClass: ''                   },
+  { key: 'PENDING',   label: 'Pending',   icon: '⏳', colorClass: 'filter-btn-pending'  },
+  { key: 'APPROVED',  label: 'Approved',  icon: '✅', colorClass: 'filter-btn-approved' },
+  { key: 'REJECTED',  label: 'Rejected',  icon: '❌', colorClass: 'filter-btn-rejected' },
+  { key: 'CANCELLED', label: 'Cancelled', icon: '🚫', colorClass: 'filter-btn-cancelled'},
 ]
 
 const SORT_OPTIONS = [
@@ -137,10 +137,10 @@ function BookingList({ scope = 'user', currentUserId, title }) {
       {/* ── Toolbar ── */}
       <div className="list-toolbar">
         <div className="filter-bar" role="group" aria-label="Filter by status">
-          {STATUS_FILTERS.map(({ key, label, icon }) => (
+          {STATUS_FILTERS.map(({ key, label, icon, colorClass }) => (
             <button
               key={key}
-              className={`filter-btn ${filter === key ? 'filter-active' : ''}`}
+              className={`filter-btn ${colorClass} ${filter === key ? 'filter-active' : ''}`}
               onClick={() => setFilter(key)}
               aria-pressed={filter === key}
             >
@@ -196,7 +196,9 @@ function BookingList({ scope = 'user', currentUserId, title }) {
           Showing <strong>{displayed.length}</strong>{' '}
           {displayed.length === 1 ? 'booking' : 'bookings'}
           {filter !== 'ALL' && (
-            <> · <span className="result-filter-tag">{filter.toLowerCase()}</span></>
+            <> · <span className={`result-filter-tag result-filter-tag-${filter.toLowerCase()}`}>
+              {filter.toLowerCase()}
+            </span></>
           )}
         </p>
       )}
