@@ -20,11 +20,20 @@ const SORT_OPTIONS = [
 ]
 
 const EMPTY_MESSAGES = {
-  ALL:       { icon: '📭', title: 'No bookings yet',       sub: 'Submitted bookings will appear here.' },
-  PENDING:   { icon: '⏳', title: 'No pending bookings',   sub: 'Nothing is waiting for approval.'     },
-  APPROVED:  { icon: '✅', title: 'No approved bookings',  sub: 'Approved bookings will show here.'    },
-  REJECTED:  { icon: '❌', title: 'No rejected bookings',  sub: 'Rejected bookings will show here.'    },
-  CANCELLED: { icon: '🚫', title: 'No cancelled bookings', sub: 'Cancelled bookings will show here.'   },
+  user: {
+    ALL:       { icon: '📅', title: 'No bookings yet',       sub: 'Use the form to reserve a resource.' },
+    PENDING:   { icon: '⏳', title: 'No pending bookings',   sub: 'Nothing is waiting for approval.'    },
+    APPROVED:  { icon: '✅', title: 'No approved bookings',  sub: 'Approved bookings will show here.'   },
+    REJECTED:  { icon: '❌', title: 'No rejected bookings',  sub: 'Rejected bookings will show here.'   },
+    CANCELLED: { icon: '🚫', title: 'No cancelled bookings', sub: 'Cancelled bookings will show here.'  },
+  },
+  admin: {
+    ALL:       { icon: '📭', title: 'No bookings yet',       sub: 'Submitted bookings will appear here.' },
+    PENDING:   { icon: '⏳', title: 'No pending bookings',   sub: 'Nothing is waiting for approval.'     },
+    APPROVED:  { icon: '✅', title: 'No approved bookings',  sub: 'Approved bookings will show here.'    },
+    REJECTED:  { icon: '❌', title: 'No rejected bookings',  sub: 'Rejected bookings will show here.'    },
+    CANCELLED: { icon: '🚫', title: 'No cancelled bookings', sub: 'Cancelled bookings will show here.'   },
+  },
 }
 
 /* ── Sort helper ────────────────────────────────────────────── */
@@ -45,18 +54,18 @@ function sortBookings(list, sortKey) {
   })
 }
 
-/* ── Component ─────────────────────────────────────────────── */
-
 /**
- * BookingList
- *
- * Props:
- *   scope            — 'user' | 'admin'
- *                      'user'  → shows only the current user's bookings
- *                      'admin' → shows all bookings with admin controls
- *   currentUserId    — required when scope='user'
- *   title            — optional heading rendered above the toolbar
+ * Group a sorted list into { upcoming, past } buckets.
+ * "Upcoming" = today or later; "Past" = before today.
  */
+function groupByTime(list) {
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = list.filter((b) => b.date >= today)
+  const past     = list.filter((b) => b.date  < today)
+  return { upcoming, past }
+}
+
+/* ── Component ─────────────────────────────────────────────── */
 function BookingList({ scope = 'user', currentUserId, title }) {
   const { bookings, loading } = useBookingContext()
 
@@ -66,13 +75,13 @@ function BookingList({ scope = 'user', currentUserId, title }) {
 
   const showAdminControls = scope === 'admin'
 
-  /* ── Source list from context ── */
+  /* ── Source list ── */
   const sourceBookings = useMemo(() => {
     if (scope === 'admin') return bookings
     return bookings.filter((b) => b.userId === currentUserId)
   }, [bookings, scope, currentUserId])
 
-  /* ── Per-status counts for filter badges ── */
+  /* ── Per-status counts ── */
   const counts = useMemo(() => {
     const map = { ALL: sourceBookings.length }
     sourceBookings.forEach((b) => {
@@ -81,22 +90,27 @@ function BookingList({ scope = 'user', currentUserId, title }) {
     return map
   }, [sourceBookings])
 
-  /* ── Filtered + sorted display list ── */
+  /* ── Filtered + sorted list ── */
   const displayed = useMemo(() => {
-    const filtered =
-      filter === 'ALL'
-        ? sourceBookings
-        : sourceBookings.filter((b) => b.status === filter)
+    const filtered = filter === 'ALL'
+      ? sourceBookings
+      : sourceBookings.filter((b) => b.status === filter)
     return sortBookings(filtered, sort)
   }, [sourceBookings, filter, sort])
 
-  const empty = EMPTY_MESSAGES[filter]
+  /* ── Date groups (user scope only, grid view only) ── */
+  const groups = useMemo(() => {
+    if (scope !== 'user' || viewMode !== 'grid') return null
+    return groupByTime(displayed)
+  }, [displayed, scope, viewMode])
+
+  const empty = EMPTY_MESSAGES[scope][filter]
 
   /* ── Loading skeleton ── */
   if (loading) {
     return (
       <section className="booking-list" aria-label="Bookings list" aria-busy="true">
-        {title && <h2 className="section-title">{title}</h2>}
+        {title && <h2 className="list-title">{title}</h2>}
         <div className="skeleton-toolbar">
           <div className="skeleton skeleton-bar" />
           <div className="skeleton skeleton-bar skeleton-bar-sm" />
@@ -118,12 +132,10 @@ function BookingList({ scope = 'user', currentUserId, title }) {
   return (
     <section className="booking-list" aria-label="Bookings list">
 
-      {title && <h2 className="section-title">{title}</h2>}
+      {title && <h2 className="list-title">{title}</h2>}
 
       {/* ── Toolbar ── */}
       <div className="list-toolbar">
-
-        {/* Filter pills */}
         <div className="filter-bar" role="group" aria-label="Filter by status">
           {STATUS_FILTERS.map(({ key, label, icon }) => (
             <button
@@ -143,7 +155,6 @@ function BookingList({ scope = 'user', currentUserId, title }) {
           ))}
         </div>
 
-        {/* Sort + view toggle */}
         <div className="list-controls">
           <label htmlFor="sort-select" className="sr-only">Sort bookings</label>
           <select
@@ -190,21 +201,55 @@ function BookingList({ scope = 'user', currentUserId, title }) {
         </p>
       )}
 
-      {/* ── Cards / Empty state ── */}
-      {displayed.length === 0 ? (
+      {/* ── Empty state ── */}
+      {displayed.length === 0 && (
         <div className="empty-state" role="status">
           <span className="empty-icon" aria-hidden="true">{empty.icon}</span>
           <p className="empty-title">{empty.title}</p>
           <p className="empty-sub">{empty.sub}</p>
         </div>
-      ) : (
+      )}
+
+      {/* ── Grouped user view (grid only) ── */}
+      {displayed.length > 0 && groups && (
+        <>
+          {groups.upcoming.length > 0 && (
+            <div className="booking-group">
+              <h3 className="group-heading">
+                <span className="group-heading-dot group-dot-upcoming" aria-hidden="true" />
+                Upcoming
+                <span className="group-count">{groups.upcoming.length}</span>
+              </h3>
+              <div className="cards-grid">
+                {groups.upcoming.map((b) => (
+                  <BookingCard key={b.id} booking={b} showAdminControls={false} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groups.past.length > 0 && (
+            <div className="booking-group">
+              <h3 className="group-heading group-heading-muted">
+                <span className="group-heading-dot group-dot-past" aria-hidden="true" />
+                Past
+                <span className="group-count">{groups.past.length}</span>
+              </h3>
+              <div className="cards-grid">
+                {groups.past.map((b) => (
+                  <BookingCard key={b.id} booking={b} showAdminControls={false} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Flat list (admin scope or list view mode) ── */}
+      {displayed.length > 0 && !groups && (
         <div className={viewMode === 'grid' ? 'cards-grid' : 'cards-list'}>
-          {displayed.map((booking) => (
-            <BookingCard
-              key={booking.id}
-              booking={booking}
-              showAdminControls={showAdminControls}
-            />
+          {displayed.map((b) => (
+            <BookingCard key={b.id} booking={b} showAdminControls={showAdminControls} />
           ))}
         </div>
       )}

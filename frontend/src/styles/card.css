@@ -91,6 +91,31 @@
 .status-rejected  { background: #fee2e2; color: #991b1b; }
 .status-cancelled { background: #f3f4f6; color: #6b7280; }
 
+/* ── Header badges row (status + temporal tag) ── */
+.card-header-badges {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── Temporal tag ── */
+.temporal-tag {
+  padding: .18rem .55rem;
+  border-radius: 20px;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+
+.tag-today    { background: #dbeafe; color: #1d4ed8; }
+.tag-upcoming { background: #ede9fe; color: #5b21b6; }
+.tag-past     { background: #f3f4f6; color: #6b7280; }
+
 /* ── Body ── */
 .card-body {
   display: flex;
@@ -173,6 +198,27 @@
   color: var(--color-muted);
   font-family: 'Courier New', monospace;
   letter-spacing: .02em;
+}
+
+.card-submitted {
+  font-size: .72rem;
+  color: var(--color-muted);
+}
+
+/* Terminal state label (cancelled / rejected) */
+.card-terminal-label {
+  font-size: .78rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+/* Dim terminal cards slightly */
+.card-terminal {
+  opacity: .82;
+}
+
+.card-terminal:hover {
+  opacity: 1;
 }
 
 /* ── Action buttons ── */

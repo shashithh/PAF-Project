@@ -313,3 +313,56 @@
   0%   { background-position:  200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── List title ── */
+.list-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 1rem;
+}
+
+/* ── Booking groups (upcoming / past) ── */
+.booking-group {
+  margin-bottom: 1.75rem;
+}
+
+.booking-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-heading {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--color-text);
+  margin-bottom: .85rem;
+}
+
+.group-heading-muted {
+  color: var(--color-muted);
+}
+
+.group-heading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-dot-upcoming { background: #818cf8; }
+.group-dot-past     { background: #d1d5db; }
+
+.group-count {
+  margin-left: .25rem;
+  background: var(--color-border);
+  color: var(--color-muted);
+  border-radius: 20px;
+  padding: .05rem .5rem;
+  font-size: .7rem;
+  font-weight: 700;
+}

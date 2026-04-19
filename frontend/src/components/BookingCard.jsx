@@ -10,7 +10,6 @@ const STATUS_CONFIG = {
   CANCELLED: { label: 'Cancelled', className: 'status-cancelled', icon: '🚫', accent: 'accent-cancelled' },
 }
 
-/* ── Resource icon map ─────────────────────────────────────── */
 const RESOURCE_ICONS = {
   'Computer Lab A':      '🖥️',
   'Computer Lab B':      '🖥️',
@@ -40,17 +39,30 @@ function calcDuration(start, end) {
   return `${m}m`
 }
 
+/**
+ * Returns a temporal tag for user-facing cards.
+ * { label, className } — e.g. "Today", "Upcoming", "Past"
+ */
+function getTemporalTag(dateStr) {
+  if (!dateStr) return null
+  const today    = new Date().toISOString().split('T')[0]
+  if (dateStr === today)  return { label: 'Today',    className: 'tag-today'    }
+  if (dateStr  > today)   return { label: 'Upcoming', className: 'tag-upcoming' }
+  return                         { label: 'Past',     className: 'tag-past'     }
+}
+
 /* ── Component ─────────────────────────────────────────────── */
 function BookingCard({ booking, showAdminControls = false }) {
   const { updateBookingStatus, notify } = useBookingContext()
   const [confirmCancel, setConfirmCancel] = useState(false)
 
-  const config    = STATUS_CONFIG[booking.status] || {}
-  const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED'
-  const duration  = calcDuration(booking.startTime, booking.endTime)
-  const resIcon   = RESOURCE_ICONS[booking.resourceName] ?? '📦'
+  const config       = STATUS_CONFIG[booking.status] || {}
+  const canCancel    = booking.status === 'PENDING' || booking.status === 'APPROVED'
+  const isTerminal   = booking.status === 'REJECTED' || booking.status === 'CANCELLED'
+  const duration     = calcDuration(booking.startTime, booking.endTime)
+  const resIcon      = RESOURCE_ICONS[booking.resourceName] ?? '📦'
+  const temporalTag  = !showAdminControls ? getTemporalTag(booking.date) : null
 
-  /* ── Action handlers — dispatch directly to context ── */
   const handleCancel = () => {
     if (confirmCancel) {
       updateBookingStatus(booking.id, 'CANCELLED')
@@ -71,8 +83,10 @@ function BookingCard({ booking, showAdminControls = false }) {
   }
 
   return (
-    <article className={`booking-card ${config.accent ?? ''}`}>
-
+    <article
+      className={`booking-card ${config.accent ?? ''} ${isTerminal ? 'card-terminal' : ''}`}
+      aria-label={`${booking.resourceName}, ${config.label}`}
+    >
       {/* ── Accent bar ── */}
       <div className="card-accent-bar" aria-hidden="true" />
 
@@ -82,12 +96,19 @@ function BookingCard({ booking, showAdminControls = false }) {
           <span className="card-resource-icon" aria-hidden="true">{resIcon}</span>
           <h3 className="card-resource">{booking.resourceName}</h3>
         </div>
-        <span
-          className={`status-badge ${config.className}`}
-          aria-label={`Status: ${config.label}`}
-        >
-          <span aria-hidden="true">{config.icon}</span> {config.label}
-        </span>
+        <div className="card-header-badges">
+          {temporalTag && (
+            <span className={`temporal-tag ${temporalTag.className}`}>
+              {temporalTag.label}
+            </span>
+          )}
+          <span
+            className={`status-badge ${config.className}`}
+            aria-label={`Status: ${config.label}`}
+          >
+            <span aria-hidden="true">{config.icon}</span> {config.label}
+          </span>
+        </div>
       </div>
 
       {/* ── Body ── */}
@@ -99,16 +120,13 @@ function BookingCard({ booking, showAdminControls = false }) {
           </div>
           <div className="card-detail">
             <span className="detail-icon" aria-hidden="true">🕐</span>
-            <span className="detail-text">
-              {booking.startTime} – {booking.endTime}
-            </span>
+            <span className="detail-text">{booking.startTime} – {booking.endTime}</span>
             {duration && (
               <span className="duration-pill" aria-label={`Duration: ${duration}`}>
                 {duration}
               </span>
             )}
           </div>
-          {/* Show submitter name in admin view */}
           {showAdminControls && booking.userName && (
             <div className="card-detail">
               <span className="detail-icon" aria-hidden="true">👤</span>
@@ -125,16 +143,25 @@ function BookingCard({ booking, showAdminControls = false }) {
 
       {/* ── Footer ── */}
       <div className="card-footer">
-        <span className="card-id" aria-label={`Booking ID: ${booking.id}`}>
-          #{booking.id}
-        </span>
+        {/* Submitted date — more useful to users than a raw ID */}
+        {booking.createdAt ? (
+          <span className="card-submitted" aria-label="Submitted on">
+            Submitted {new Date(booking.createdAt).toLocaleDateString('en-US', {
+              month: 'short', day: 'numeric',
+            })}
+          </span>
+        ) : (
+          <span className="card-id" aria-label={`Booking ID: ${booking.id}`}>
+            #{booking.id}
+          </span>
+        )}
 
         <div className="card-actions">
-          {/* User: cancel with confirm step */}
+          {/* User: cancel with confirm step — only on active bookings */}
           {!showAdminControls && canCancel && (
             confirmCancel ? (
               <div className="confirm-row" role="group" aria-label="Confirm cancellation">
-                <span className="confirm-label">Cancel booking?</span>
+                <span className="confirm-label">Cancel?</span>
                 <button
                   className="btn-confirm-yes"
                   onClick={handleCancel}
@@ -159,6 +186,13 @@ function BookingCard({ booking, showAdminControls = false }) {
                 Cancel
               </button>
             )
+          )}
+
+          {/* Terminal state label — replaces empty action area */}
+          {!showAdminControls && isTerminal && (
+            <span className="card-terminal-label">
+              {booking.status === 'CANCELLED' ? 'You cancelled this' : 'Not approved'}
+            </span>
           )}
 
           {/* Admin: approve / reject */}
