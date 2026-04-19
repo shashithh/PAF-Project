@@ -1,0 +1,279 @@
+/* ══════════════════════════════════════
+   BookingList
+   ══════════════════════════════════════ */
+
+.booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Toolbar ── */
+.list-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+}
+
+/* ── Filter pills ── */
+.filter-bar {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .85rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: .82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition),
+              background var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.filter-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(79, 110, 247, .25);
+}
+
+/* count badge inside filter pill */
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 .35rem;
+  border-radius: 20px;
+  background: var(--color-border);
+  color: var(--color-muted);
+  font-size: .7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.filter-count-active {
+  background: rgba(255, 255, 255, .3);
+  color: #fff;
+}
+
+/* ── Right-side controls (sort + view toggle) ── */
+.list-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+
+.sort-select {
+  padding: .35rem .75rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.sort-select:focus {
+  border-color: var(--color-primary);
+}
+
+/* ── View toggle (grid / list) ── */
+.view-toggle {
+  display: flex;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-btn {
+  padding: .32rem .6rem;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  line-height: 1;
+}
+
+.view-btn:first-child {
+  border-right: 1.5px solid var(--color-border);
+}
+
+.view-btn:hover {
+  background: #f3f4f6;
+  color: var(--color-text);
+}
+
+.view-btn-active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.view-btn-active:hover {
+  background: var(--color-primary-h);
+  color: #fff;
+}
+
+/* ── Result count line ── */
+.result-count {
+  font-size: .82rem;
+  color: var(--color-muted);
+  margin-bottom: 1rem;
+}
+
+.result-count strong {
+  color: var(--color-text);
+}
+
+.result-filter-tag {
+  display: inline-block;
+  background: #eef1fd;
+  color: var(--color-primary);
+  border-radius: 4px;
+  padding: 0 .4rem;
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* ── Grid view ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ── List view ── */
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+/* In list view, cards go horizontal */
+.cards-list .booking-card {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.cards-list .card-accent-bar {
+  width: 4px;
+  height: auto;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+/* override accent-bar direction for list mode */
+.cards-list .accent-approved  .card-accent-bar { background: #22c55e; }
+.cards-list .accent-pending   .card-accent-bar { background: #f59e0b; }
+.cards-list .accent-rejected  .card-accent-bar { background: #ef4444; }
+.cards-list .accent-cancelled .card-accent-bar { background: #d1d5db; }
+
+.cards-list .card-header {
+  flex: 0 0 200px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  border-right: 1px solid var(--color-border);
+  padding: .85rem 1rem;
+}
+
+.cards-list .card-body {
+  flex: 1;
+  padding: .85rem 1rem;
+  border-right: 1px solid var(--color-border);
+  justify-content: center;
+}
+
+.cards-list .card-purpose-row {
+  border-top: none;
+  padding-top: 0;
+}
+
+.cards-list .card-footer {
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: .5rem;
+  padding: .85rem 1rem;
+  border-top: none;
+  min-width: 130px;
+}
+
+.cards-list .card-actions {
+  flex-direction: column;
+  width: 100%;
+}
+
+.cards-list .btn-cancel,
+.cards-list .btn-approve,
+.cards-list .btn-reject {
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.5rem 1rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 2.75rem;
+  margin-bottom: .75rem;
+  line-height: 1;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: .3rem;
+}
+
+.empty-sub {
+  font-size: .85rem;
+  color: var(--color-muted);
+}
+
+/* ── Accessibility ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

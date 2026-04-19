@@ -97,11 +97,4 @@ body {
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ── Empty state ── */
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--color-muted);
-}
-
-.empty-icon { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+/* empty-state rules live in list.css */

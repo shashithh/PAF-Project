@@ -238,38 +238,7 @@
 .btn-confirm-yes:hover,
 .btn-confirm-no:hover { opacity: .8; }
 
-/* ══════════════════════════════════════
-   Filter bar  (used by BookingList)
-   ══════════════════════════════════════ */
-.filter-bar {
-  display: flex;
-  gap: .5rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-}
-
-.filter-btn {
-  padding: .35rem .9rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: 20px;
-  background: var(--color-surface);
-  color: var(--color-muted);
-  font-size: .82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.filter-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.filter-active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff !important;
-}
+/* filter-bar rules live in list.css */
 
 /* ══════════════════════════════════════
    Admin stats  (used by AdminPage)
@@ -307,18 +276,7 @@
   letter-spacing: .05em;
 }
 
-/* ── Empty state ── */
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--color-muted);
-}
-
-.empty-icon {
-  font-size: 2.5rem;
-  display: block;
-  margin-bottom: .75rem;
-}
+/* empty-state rules live in list.css */
 
 /* ── Animations ── */
 @keyframes fadeIn {
