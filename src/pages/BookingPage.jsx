@@ -2,10 +2,15 @@ import React from 'react'
 import BookingForm from '../components/BookingForm.jsx'
 import BookingList from '../components/BookingList.jsx'
 
-function BookingPage({ bookings, currentUser, onAddBooking, onUpdateStatus, onNotify }) {
-  // Only show the current user's bookings on this page
-  const myBookings = bookings.filter((b) => b.userId === currentUser.id)
-
+function BookingPage({
+  bookings,
+  myBookings,
+  loading,
+  currentUser,
+  onAddBooking,
+  onUpdateStatus,
+  onNotify,
+}) {
   const handleCancel = (id) => {
     onUpdateStatus(id, 'CANCELLED')
     onNotify('Booking cancelled.')
@@ -15,7 +20,9 @@ function BookingPage({ bookings, currentUser, onAddBooking, onUpdateStatus, onNo
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Book a Resource</h1>
-        <p className="page-subtitle">Reserve labs, rooms, and equipment on campus.</p>
+        <p className="page-subtitle">
+          Reserve labs, rooms, and equipment on campus.
+        </p>
       </div>
 
       <div className="page-layout">
@@ -34,6 +41,7 @@ function BookingPage({ bookings, currentUser, onAddBooking, onUpdateStatus, onNo
           <h2 className="section-title">My Bookings</h2>
           <BookingList
             bookings={myBookings}
+            loading={loading}
             onCancel={handleCancel}
             showAdminControls={false}
           />

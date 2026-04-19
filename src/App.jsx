@@ -5,11 +5,21 @@ import BookingPage from './pages/BookingPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
 import { useBookings } from './hooks/useBookings.js'
 
-// Mock current user — swap role to 'ADMIN' to test admin view
-const currentUser = { id: 'u1', name: 'Alice', role: 'USER' }
+// Mock current user — swap to any mockUsers entry to test different roles/views
+// { id: 'u1', name: 'Alice Tan', role: 'USER'  }
+// { id: 'u5', name: 'Eve Rahman', role: 'ADMIN' }
+const currentUser = { id: 'u1', name: 'Alice Tan', role: 'USER' }
 
 function App() {
-  const { bookings, addBooking, updateBookingStatus } = useBookings()
+  const {
+    bookings,
+    loading,
+    addBooking,
+    updateBookingStatus,
+    getMyBookings,
+    stats,
+  } = useBookings()
+
   const [notification, setNotification] = useState(null)
 
   const showNotification = (message, type = 'success') => {
@@ -35,6 +45,8 @@ function App() {
             element={
               <BookingPage
                 bookings={bookings}
+                myBookings={getMyBookings(currentUser.id)}
+                loading={loading}
                 currentUser={currentUser}
                 onAddBooking={addBooking}
                 onUpdateStatus={updateBookingStatus}
@@ -48,13 +60,15 @@ function App() {
               currentUser.role === 'ADMIN'
                 ? <AdminPage
                     bookings={bookings}
+                    loading={loading}
+                    stats={stats}
                     onUpdateStatus={updateBookingStatus}
                     onNotify={showNotification}
                   />
                 : <Navigate to="/" replace />
             }
           />
-          {/* Catch-all redirect */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

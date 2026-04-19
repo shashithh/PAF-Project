@@ -46,7 +46,7 @@ function sortBookings(list, sortKey) {
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-function BookingList({ bookings, onCancel, onApprove, onReject, showAdminControls }) {
+function BookingList({ bookings, loading = false, onCancel, onApprove, onReject, showAdminControls }) {
   const [filter,   setFilter]   = useState('ALL')
   const [sort,     setSort]     = useState('date-desc')
   const [viewMode, setViewMode] = useState('grid')   // 'grid' | 'list'
@@ -69,6 +69,28 @@ function BookingList({ bookings, onCancel, onApprove, onReject, showAdminControl
   }, [bookings, filter, sort])
 
   const empty = EMPTY_MESSAGES[filter]
+
+  // Loading skeleton
+  if (loading) {
+    return (
+      <section className="booking-list" aria-label="Bookings list" aria-busy="true">
+        <div className="skeleton-toolbar">
+          <div className="skeleton skeleton-bar" />
+          <div className="skeleton skeleton-bar skeleton-bar-sm" />
+        </div>
+        <div className="cards-grid">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton skeleton-line skeleton-line-title" />
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line skeleton-line-sm" />
+              <div className="skeleton skeleton-line skeleton-line-sm" />
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="booking-list" aria-label="Bookings list">
