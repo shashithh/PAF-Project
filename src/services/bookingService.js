@@ -1,3 +1,5 @@
+import { mockBookings } from '../data/mockBookings.js'
+
 /**
  * bookingService.js
  *
@@ -79,7 +81,6 @@ export async function submitBooking(booking) {
  */
 export async function fetchBookings() {
   // Real: return fetch('/api/bookings').then(r => r.json())
-  const { mockBookings } = await import('../data/mockBookings.js')
   await new Promise((resolve) => setTimeout(resolve, 400))
   return mockBookings
 }

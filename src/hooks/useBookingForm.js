@@ -243,59 +243,74 @@ export function useBookingForm(currentUser) {
     )
   }, [bookings, form.resourceId, form.date, form.startTime, form.endTime])
 
-  /* ── Reset ── */
+  /* ── Reset — clears every piece of form state ── */
   const reset = useCallback(() => {
     setForm(EMPTY_FORM)
     setErrors({})
     setTouched({})
+    setSubmitErr(null)
     setSubmitted(false)
+    inFlight.current = false
   }, [])
 
   /* ── Submit ── */
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
 
-    // Mark all fields touched so live warnings become visible
-    setTouched({ resourceId: true, date: true, startTime: true, endTime: true, purpose: true })
+    // Double-submission guard
+    if (inFlight.current) return
+    inFlight.current = true
 
+    // Mark every field touched so live warnings surface immediately
+    setTouched({
+      resourceId: true, date: true,
+      startTime:  true, endTime: true, purpose: true,
+    })
+    setSubmitErr(null)
+
+    // 1. Validate
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+      inFlight.current = false
       return
     }
 
+    // 2. Conflict check
     const conflict = findConflict()
     if (conflict) {
       setErrors({
         conflict: `Already booked ${conflict.startTime}–${conflict.endTime} on ${conflict.date}.`,
       })
+      inFlight.current = false
       return
     }
 
+    // 3. Submit to service
     setSubmitting(true)
-    // Simulate async API call — replace with real fetch when backend is ready
-    await new Promise((resolve) => setTimeout(resolve, 900))
+    try {
+      const resource = resources.find((r) => r.id === form.resourceId)
+      const payload  = createBookingPayload(form, currentUser, resource)
+      const saved    = await submitBooking(payload)
 
-    const resource = resources.find((r) => r.id === form.resourceId)
-    addBooking({
-      id:           `b${Date.now()}`,
-      userId:       currentUser.id,
-      userName:     currentUser.name,
-      resourceId:   form.resourceId,
-      resourceName: resource?.name ?? form.resourceId,
-      date:         form.date,
-      startTime:    form.startTime,
-      endTime:      form.endTime,
-      purpose:      form.purpose.trim(),
-      status:       'PENDING',
-      createdAt:    new Date().toISOString(),
-    })
+      // 4. Commit to context
+      addBooking(saved)
+      notify('Booking submitted successfully!')
 
-    notify('Booking submitted successfully!')
-    setSubmitting(false)
-    setSubmitted(true)
-    setTimeout(reset, 1800)
-  }, [validate, findConflict, form, currentUser, addBooking, notify, reset])
+      // 5. Show success state, then reset after a short delay
+      setSubmitted(true)
+      setTimeout(reset, 2000)
+
+    } catch (err) {
+      const msg = err?.message ?? 'Something went wrong. Please try again.'
+      setSubmitErr(msg)
+      reportSubmitError(msg)
+      notify(msg, 'error')
+      inFlight.current = false
+    } finally {
+      setSubmitting(false)
+    }
+  }, [validate, findConflict, form, currentUser, addBooking, reportSubmitError, notify, reset])
 
   /* ── Derived values ── */
   const selectedResource = useMemo(
@@ -336,6 +351,7 @@ export function useBookingForm(currentUser) {
     touched,
     submitting,
     submitted,
+    submitErr,
     handleChange,
     handleBlur,
     handleSubmit,

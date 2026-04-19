@@ -71,6 +71,28 @@
   margin-top: .15rem;
 }
 
+.form-success-body {
+  flex: 1;
+}
+
+.btn-success-reset {
+  flex-shrink: 0;
+  align-self: center;
+  padding: .35rem .85rem;
+  background: #166534;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.btn-success-reset:hover {
+  opacity: .85;
+}
+
 /* ── Sections ── */
 .form-section {
   border: none;

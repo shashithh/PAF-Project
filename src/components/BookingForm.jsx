@@ -32,9 +32,11 @@ function BookingForm({ currentUser }) {
     touched,
     submitting,
     submitted,
+    submitErr,
     handleChange,
     handleBlur,
     handleSubmit,
+    reset,
     selectedResource,
     duration,
     durationMins,
@@ -61,10 +63,18 @@ function BookingForm({ currentUser }) {
       {submitted && (
         <div className="form-success" role="status">
           <span className="form-success-icon">✅</span>
-          <div>
+          <div className="form-success-body">
             <strong>Booking submitted!</strong>
             <p>Your request is pending admin approval.</p>
           </div>
+          <button
+            type="button"
+            className="btn-success-reset"
+            onClick={reset}
+            aria-label="Submit another booking"
+          >
+            Book another
+          </button>
         </div>
       )}
 
@@ -274,6 +284,17 @@ function BookingForm({ currentUser }) {
           <div>
             <strong>Scheduling conflict</strong>
             <p>{errors.conflict}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Server / submission error ── */}
+      {submitErr && !errors.conflict && (
+        <div className="error-banner" role="alert">
+          <span className="error-banner-icon">🚫</span>
+          <div>
+            <strong>Submission failed</strong>
+            <p>{submitErr}</p>
           </div>
         </div>
       )}
