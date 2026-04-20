@@ -1,42 +1,16 @@
 import React from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useNavigate } from 'react-router-dom'
 
-function UnauthorizedPage() {
-  const { currentUser } = useAuth()
-  const navigate  = useNavigate()
-  const location  = useLocation()
-  const from      = location.state?.from?.pathname ?? '/'
-
+export default function UnauthorizedPage() {
+  const navigate = useNavigate()
   return (
-    <div className="unauth-page">
-      <div className="unauth-card">
-        <span className="unauth-icon" aria-hidden="true">🔒</span>
-        <h1 className="unauth-title">Access Denied</h1>
-        <p className="unauth-message">
-          {currentUser
-            ? `Your account (${currentUser.role}) doesn't have permission to view this page.`
-            : 'You need to be logged in to view this page.'}
-        </p>
-        <div className="unauth-actions">
-          <button
-            className="btn-primary unauth-btn"
-            onClick={() => navigate('/')}
-          >
-            Go to My Bookings
-          </button>
-          {from !== '/' && (
-            <button
-              className="btn-secondary"
-              onClick={() => navigate(-1)}
-            >
-              Go back
-            </button>
-          )}
-        </div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'70vh',padding:'2rem'}}>
+      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'3rem 2.5rem',maxWidth:420,width:'100%',textAlign:'center',boxShadow:'var(--shadow-md)'}}>
+        <div style={{fontSize:'3rem',marginBottom:'1rem'}}>🔒</div>
+        <h1 style={{fontSize:'1.5rem',fontWeight:800,marginBottom:'.5rem'}}>Access Denied</h1>
+        <p style={{color:'var(--muted)',marginBottom:'1.5rem'}}>You don't have permission to view this page.</p>
+        <button className="btn btn-primary btn-full" onClick={() => navigate('/')}>Go to My Bookings</button>
       </div>
     </div>
   )
 }
-
-export default UnauthorizedPage

@@ -1,100 +1,78 @@
 import React, { useState } from 'react'
-import { NavLink } from 'react-router-dom'
-import { useAuth, ROLES } from '../context/AuthContext.jsx'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 import { mockUsers } from '../data/mockBookings.js'
 import '../styles/navbar.css'
 
-function Navbar() {
+export default function Navbar() {
   const { currentUser, isAdmin, login } = useAuth()
-  const [showSwitcher, setShowSwitcher] = useState(false)
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
 
   if (!currentUser) return null
 
   return (
     <header className="navbar">
       {/* Brand */}
-      <div className="navbar-brand">
-        <span className="brand-icon" aria-hidden="true">🏛️</span>
-        <span className="brand-name">Smart Campus</span>
-      </div>
+      <button className="nav-brand" onClick={() => navigate('/')}>
+        <span className="nav-logo">🏛</span>
+        <span>CampusBook</span>
+      </button>
 
-      {/* Navigation links */}
-      <nav className="navbar-links" aria-label="Main navigation">
-        <NavLink
-          to="/"
-          end
-          className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}
-        >
-          My Bookings
+      {/* Nav links */}
+      <nav className="nav-links" aria-label="Main navigation">
+        <NavLink to="/book" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          Resources
         </NavLink>
-
-        {/* Admin-only link — hidden from USER role */}
+        <NavLink to="/new-booking" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          New booking
+        </NavLink>
+        <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          My bookings
+        </NavLink>
         {isAdmin && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) => `nav-btn nav-btn-admin ${isActive ? 'active' : ''}`}
-          >
-            Admin Panel
+          <NavLink to="/admin" className={({ isActive }) => `nav-link nav-link-admin${isActive ? ' active' : ''}`}>
+            Admin
           </NavLink>
         )}
       </nav>
 
-      {/* User section */}
-      <div className="navbar-user">
-        {/* Dev user switcher — remove in production */}
-        <div className="user-switcher-wrap">
-          <button
-            className="user-switcher-trigger"
-            onClick={() => setShowSwitcher((v) => !v)}
-            aria-expanded={showSwitcher}
-            aria-haspopup="listbox"
-            aria-label="Switch user (dev only)"
-            title="Dev: switch user"
-          >
-            <span className="user-avatar" aria-hidden="true">
-              {currentUser.name[0]}
-            </span>
-            <span className="user-name">{currentUser.name}</span>
-            <span
-              className={`role-badge role-${currentUser.role.toLowerCase()}`}
-              aria-label={`Role: ${currentUser.role}`}
-            >
-              {currentUser.role}
-            </span>
-            <span className="switcher-chevron" aria-hidden="true">▾</span>
-          </button>
+      {/* User switcher */}
+      <div className="nav-user">
+        <button
+          className="nav-user-btn"
+          onClick={() => setOpen(v => !v)}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+        >
+          <span className="nav-avatar">{currentUser.name[0]}</span>
+          <span className="nav-uname">{currentUser.name}</span>
+          <span className={`nav-role nav-role-${currentUser.role.toLowerCase()}`}>
+            {currentUser.role}
+          </span>
+          <span className="nav-chevron">▾</span>
+        </button>
 
-          {showSwitcher && (
-            <ul
-              className="user-switcher-menu"
-              role="listbox"
-              aria-label="Select user"
-            >
-              {mockUsers.map((u) => (
-                <li key={u.id} role="option" aria-selected={u.id === currentUser.id}>
-                  <button
-                    className={`switcher-item ${u.id === currentUser.id ? 'switcher-item-active' : ''}`}
-                    onClick={() => { login(u.id); setShowSwitcher(false) }}
-                  >
-                    <span className="switcher-avatar" aria-hidden="true">{u.name[0]}</span>
-                    <span className="switcher-info">
-                      <span className="switcher-name">{u.name}</span>
-                      <span className={`switcher-role role-${u.role.toLowerCase()}`}>
-                        {u.role}
-                      </span>
-                    </span>
-                    {u.id === currentUser.id && (
-                      <span className="switcher-check" aria-hidden="true">✓</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {open && (
+          <ul className="nav-dropdown" role="listbox">
+            {mockUsers.map(u => (
+              <li key={u.id} role="option" aria-selected={u.id === currentUser.id}>
+                <button
+                  className={`nav-dd-item${u.id === currentUser.id ? ' active' : ''}`}
+                  onClick={() => { login(u.id); setOpen(false) }}
+                >
+                  <span className="nav-dd-avatar">{u.name[0]}</span>
+                  <span>
+                    <span className="nav-dd-name">{u.name}</span>
+                    <span className="nav-dd-role">{u.role}</span>
+                  </span>
+                  {u.id === currentUser.id && <span className="nav-dd-check">✓</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </header>
   )
 }
-
-export default Navbar
