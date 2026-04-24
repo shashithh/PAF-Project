@@ -152,16 +152,15 @@ export function BookingProvider({ children }) {
    * Approve or reject a booking (admin).
    * Optimistic update — rolls back and shows an error toast if the API fails.
    */
-  const updateBookingStatus = useCallback(async (id, status) => {
+  const updateBookingStatus = useCallback(async (id, status, reason = null) => {
     const booking        = state.bookings.find((b) => b.id === id)
     const previousStatus = booking?.status
     if (!previousStatus) return
 
-    // 1. Optimistic flip
     dispatch({ type: ACTIONS.UPDATE_STATUS, payload: { id, status } })
 
     try {
-      await apiUpdateStatus(id, status)
+      await apiUpdateStatus(id, status, reason)
       dispatch({
         type: ACTIONS.SHOW_TOAST,
         payload: {
@@ -170,14 +169,10 @@ export function BookingProvider({ children }) {
         },
       })
     } catch (err) {
-      // 2. Rollback
       dispatch({ type: ACTIONS.UPDATE_STATUS_ERROR, payload: { id, previousStatus } })
       dispatch({
         type: ACTIONS.SHOW_TOAST,
-        payload: {
-          message: err?.message ?? 'Action failed. Please try again.',
-          type: 'error',
-        },
+        payload: { message: err?.message ?? 'Action failed. Please try again.', type: 'error' },
       })
     }
   }, [state.bookings])

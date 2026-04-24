@@ -40,7 +40,13 @@ public class Booking {
     @NotBlank
     private String purpose;
 
+    /** Number of expected attendees (optional, 0 = not specified). */
+    private int attendees = 0;
+
     private BookingStatus status = BookingStatus.PENDING;
+
+    /** Reason provided by admin when rejecting a booking. */
+    private String rejectionReason;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -55,20 +61,24 @@ public class Booking {
     public LocalTime getStartTime()      { return startTime; }
     public LocalTime getEndTime()        { return endTime; }
     public String getPurpose()           { return purpose; }
+    public int getAttendees()            { return attendees; }
     public BookingStatus getStatus()     { return status; }
+    public String getRejectionReason()   { return rejectionReason; }
     public LocalDateTime getCreatedAt()  { return createdAt; }
 
     // ── Setters ──────────────────────────────────────────────
 
-    public void setId(String id)                    { this.id = id; }
-    public void setUserId(String userId)            { this.userId = userId; }
-    public void setUserName(String userName)        { this.userName = userName; }
-    public void setResourceId(String resourceId)    { this.resourceId = resourceId; }
-    public void setResourceName(String resourceName){ this.resourceName = resourceName; }
-    public void setDate(LocalDate date)             { this.date = date; }
-    public void setStartTime(LocalTime startTime)   { this.startTime = startTime; }
-    public void setEndTime(LocalTime endTime)       { this.endTime = endTime; }
-    public void setPurpose(String purpose)          { this.purpose = purpose; }
-    public void setStatus(BookingStatus status)     { this.status = status; }
-    public void setCreatedAt(LocalDateTime createdAt){ this.createdAt = createdAt; }
+    public void setId(String id)                          { this.id = id; }
+    public void setUserId(String userId)                  { this.userId = userId; }
+    public void setUserName(String userName)              { this.userName = userName; }
+    public void setResourceId(String resourceId)          { this.resourceId = resourceId; }
+    public void setResourceName(String resourceName)      { this.resourceName = resourceName; }
+    public void setDate(LocalDate date)                   { this.date = date; }
+    public void setStartTime(LocalTime startTime)         { this.startTime = startTime; }
+    public void setEndTime(LocalTime endTime)             { this.endTime = endTime; }
+    public void setPurpose(String purpose)                { this.purpose = purpose; }
+    public void setAttendees(int attendees)               { this.attendees = attendees; }
+    public void setStatus(BookingStatus status)           { this.status = status; }
+    public void setRejectionReason(String rejectionReason){ this.rejectionReason = rejectionReason; }
+    public void setCreatedAt(LocalDateTime createdAt)     { this.createdAt = createdAt; }
 }

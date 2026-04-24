@@ -25,6 +25,8 @@ public class DataLoader {
                                    ResourceRepository resourceRepo) {
         return args -> {
             // ── Seed resources ────────────────────────────────────
+            // Only seed if collection is empty (idempotent).
+            // To refresh fields, manually drop the 'resources' collection in Atlas.
             if (resourceRepo.count() == 0) {
                 resourceRepo.save(resource("r1", "Computer Lab A",      30, "lab"));
                 resourceRepo.save(resource("r2", "Computer Lab B",      30, "lab"));
@@ -32,6 +34,15 @@ public class DataLoader {
                 resourceRepo.save(resource("r4", "Physics Lab",         20, "lab"));
                 resourceRepo.save(resource("r5", "Projector Kit #3",     1, "equipment"));
                 System.out.println("Seeded 5 resources into MongoDB.");
+            } else {
+                // Update existing resources with new Module A compatible fields
+                // using save() which does an upsert by ID
+                resourceRepo.save(resource("r1", "Computer Lab A",      30, "lab"));
+                resourceRepo.save(resource("r2", "Computer Lab B",      30, "lab"));
+                resourceRepo.save(resource("r3", "Conference Room 101", 12, "room"));
+                resourceRepo.save(resource("r4", "Physics Lab",         20, "lab"));
+                resourceRepo.save(resource("r5", "Projector Kit #3",     1, "equipment"));
+                System.out.println("Refreshed 5 resources in MongoDB.");
             }
 
             // ── Seed bookings ─────────────────────────────────────
@@ -65,7 +76,46 @@ public class DataLoader {
         r.setName(name);
         r.setCapacity(capacity);
         r.setType(type);
+        // Module A compatible fields — so documents are readable by both modules after merge
+        r.setResourceName(name);
+        r.setResourceType(toModuleAType(type));
+        r.setResourceCode(toResourceCode(id, type));
+        r.setStatus("ACTIVE");
+        r.setLocation(toLocation(id));
         return r;
+    }
+
+    /** Map Module B simple type → Module A ResourceType enum name */
+    private String toModuleAType(String type) {
+        return switch (type) {
+            case "lab"       -> "LAB";
+            case "room"      -> "MEETING_ROOM";
+            case "equipment" -> "PROJECTOR";
+            default          -> "OTHER";
+        };
+    }
+
+    /** Generate a human-readable resource code */
+    private String toResourceCode(String id, String type) {
+        String prefix = switch (type) {
+            case "lab"       -> "LAB";
+            case "room"      -> "RM";
+            case "equipment" -> "EQ";
+            default          -> "RES";
+        };
+        return prefix + "-" + id.toUpperCase();
+    }
+
+    /** Assign a campus location per resource */
+    private String toLocation(String id) {
+        return switch (id) {
+            case "r1" -> "Block A - Floor 2";
+            case "r2" -> "Block B - Floor 1";
+            case "r3" -> "Block C - Floor 3";
+            case "r4" -> "Block D - Ground";
+            case "r5" -> "Equipment Store";
+            default   -> "Campus";
+        };
     }
 
     private Booking booking(String userId, String userName,

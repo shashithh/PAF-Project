@@ -1,9 +1,5 @@
-package com.smartcampus.config;
+package com.smartcampus.booking;
 
-import com.smartcampus.booking.ConflictException;
-import com.smartcampus.booking.ForbiddenException;
-import com.smartcampus.booking.InvalidTransitionException;
-import com.smartcampus.booking.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -15,14 +11,25 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Converts exceptions into structured JSON responses using RFC 9457 ProblemDetail.
- * Every error body has at least: { "status", "title", "detail" }
- * Validation errors also include: { "errors": { "field": "message", ... } }
+ * Handles exceptions thrown by the Booking module and converts them to
+ * structured RFC 9457 ProblemDetail JSON responses.
+ *
+ * Scoped to com.smartcampus.booking so it does NOT conflict with
+ * Module A's GlobalExceptionHandler (com.smartcampus.facilities.exception).
+ * Both handlers coexist after the GitHub merge — each handles its own exceptions.
+ *
+ * MERGE NOTE:
+ *   Module A has its own GlobalExceptionHandler in:
+ *     com.smartcampus.facilities.exception.GlobalExceptionHandler
+ *   That class is annotated @RestControllerAdvice and handles:
+ *     ResourceNotFoundException, DuplicateResourceException, InvalidTimeRangeException
+ *   This class handles booking-specific exceptions only.
+ *   There is NO class name collision because this class is named BookingExceptionHandler.
  */
-@RestControllerAdvice
-public class GlobalExceptionHandler {
+@RestControllerAdvice(basePackages = "com.smartcampus.booking")
+public class BookingExceptionHandler {
 
-    /** 409 — scheduling conflict */
+    /** 409 — time slot already booked */
     @ExceptionHandler(ConflictException.class)
     public ProblemDetail handleConflict(ConflictException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -32,7 +39,7 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
-    /** 404 — booking not found */
+    /** 404 — booking ID not found */
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(NotFoundException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -52,7 +59,7 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
-    /** 422 — invalid status transition */
+    /** 422 — invalid status transition (e.g. approving an already-rejected booking) */
     @ExceptionHandler(InvalidTransitionException.class)
     public ProblemDetail handleInvalidTransition(InvalidTransitionException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -62,7 +69,7 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
-    /** 400 — @Valid constraint violations */
+    /** 400 — @Valid constraint violations on booking request fields */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = ex.getBindingResult()
@@ -71,7 +78,7 @@ public class GlobalExceptionHandler {
             .collect(Collectors.toMap(
                 FieldError::getField,
                 fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value",
-                (a, b) -> a   // keep first message if field has multiple violations
+                (a, b) -> a
             ));
 
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -79,16 +86,6 @@ public class GlobalExceptionHandler {
         );
         pd.setTitle("Validation Failed");
         pd.setProperty("errors", fieldErrors);
-        return pd;
-    }
-
-    /** 500 — unexpected errors */
-    @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneric(Exception ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-            HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred."
-        );
-        pd.setTitle("Internal Server Error");
         return pd;
     }
 }

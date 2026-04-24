@@ -1,39 +1,118 @@
-﻿*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+﻿/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens — matching Campusora / Module A palette ── */
 :root {
-  --bg:           #f0ede6;
-  --surface:      #ffffff;
-  --surface-2:    #f5f2ec;
-  --surface-card: #fafaf7;
-  --green:        #3d5a3e;
-  --green-h:      #2e4430;
-  --green-light:  #e8efe8;
-  --green-mid:    #c8ddc9;
-  --text:         #1c1c1a;
-  --text-2:       #3a3a35;
-  --muted:        #7a7a6e;
-  --border:       #ddd9d0;
-  --border-2:     #e8e4dc;
-  --danger:       #b91c1c;
-  --warning:      #b45309;
-  --radius-xl:    20px;
-  --radius:       14px;
-  --radius-sm:    10px;
-  --radius-xs:    6px;
-  --radius-pill:  999px;
-  --shadow-sm:    0 1px 4px rgba(28,28,26,.07);
-  --shadow-md:    0 4px 18px rgba(28,28,26,.10);
-  --shadow-lg:    0 10px 40px rgba(28,28,26,.14);
-  --t:            0.18s ease;
-  --t-fast:       120ms ease;
-  --font:         "Inter","Segoe UI",system-ui,sans-serif;
-  --font-serif:   "Georgia","Times New Roman",serif;
-  --font-mono:    "Courier New",monospace;
+  /* Backgrounds */
+  --bg:           #faf9f7;
+  --bg-card:      #ffffff;
+  --bg-muted:     #f5f4f1;
+  --bg-hover:     #f0ede8;
+  --bg-subtle:    #f5f4f1;
+
+  /* Primary — emerald green (Module A exact) */
+  --primary-50:   #ecfdf5;
+  --primary-100:  #d1fae5;
+  --primary-200:  #a7f3d0;
+  --primary-500:  #10b981;
+  --primary-600:  #059669;
+  --primary-700:  #047857;
+  --primary-800:  #065f46;
+  --primary:      #059669;
+  --primary-h:    #047857;
+  --primary-light:#ecfdf5;
+  --primary-glow: rgba(5,150,105,.2);
+
+  /* Teal accent */
+  --teal-50:  #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+
+  /* Gold */
+  --gold-50:  #fffbeb;
+  --gold-100: #fef3c7;
+  --gold-200: #fde68a;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --gold-700: #b45309;
+  --gold-800: #92400e;
+
+  /* Sidebar dark */
+  --sidebar-bg:     #1a2e1a;
+  --sidebar-hover:  rgba(255,255,255,.07);
+  --sidebar-active: rgba(5,150,105,.18);
+  --sidebar-border: rgba(255,255,255,.08);
+  --sidebar-text:   rgba(255,255,255,.75);
+  --sidebar-muted:  rgba(255,255,255,.4);
+
+  /* Ink (text) */
+  --text:     #1c1917;
+  --text-2:   #57534e;
+  --muted:    #a8a29e;
+  --muted-2:  #d6d3d1;
+
+  /* Border */
+  --border:   #e8e6e1;
+  --border-2: #f0ede8;
+
+  /* Status */
+  --green:        #059669;
+  --green-light:  #d1fae5;
+  --amber:        #d97706;
+  --amber-light:  #fef3c7;
+  --red:          #dc2626;
+  --red-light:    #fee2e2;
+
+  /* Radii */
+  --radius-xl:   20px;
+  --radius:      14px;
+  --radius-sm:   10px;
+  --radius-xs:   6px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-xs:   0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm:   0 1px 3px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,.10);
+  --shadow-glow: 0 0 0 3px var(--primary-glow);
+
+  /* Transitions */
+  --t:      0.2s ease;
+  --t-fast: 0.13s ease;
+
+  /* Layout */
+  --sidebar-w:       240px;
+  --sidebar-w-mini:  68px;
+  --topbar-h:        64px;
+
+  /* Fonts */
+  --font:         "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-serif:   "Playfair Display", Georgia, serif;
+  --font-mono:    "JetBrains Mono", "Fira Code", monospace;
 }
-html { font-size:16px; -webkit-font-smoothing:antialiased; }
-body { font-family:var(--font); background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
-#root { display:flex; flex-direction:column; min-height:100vh; }
-h1,h2,h3,h4,h5,h6 { font-weight:700; line-height:1.25; color:var(--text); }
-a { color:var(--green); text-decoration:none; }
-:focus-visible { outline:2px solid var(--green); outline-offset:2px; border-radius:var(--radius-xs); }
-::-webkit-scrollbar { width:5px; height:5px; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
+
+/* ── Base ── */
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+#root { display: flex; min-height: 100vh; }
+h1,h2,h3,h4,h5,h6 { font-weight: 700; line-height: 1.25; color: var(--text); }
+a { color: var(--primary); text-decoration: none; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--radius-xs); }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Keyframes ── */
+@keyframes fadeUp    { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+@keyframes fadeIn    { from { opacity:0 } to { opacity:1 } }
+@keyframes slideDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+@keyframes slideRight{ from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:translateX(0) } }
+@keyframes popIn     { from { opacity:0; transform:scale(.85) } to { opacity:1; transform:scale(1) } }
+@keyframes spin      { to { transform:rotate(360deg) } }
+@keyframes shimmer   { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:.45} }
+@keyframes pulseDot  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+@keyframes glow      { 0%,100%{box-shadow:0 0 0 0 var(--primary-glow)} 50%{box-shadow:0 0 0 8px transparent} }

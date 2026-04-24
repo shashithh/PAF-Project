@@ -19,6 +19,9 @@ public record BookingRequest(
     @NotNull  LocalDate date,
     @NotNull  LocalTime startTime,
     @NotNull  LocalTime endTime,
-    @NotBlank String purpose
+    @NotBlank String purpose,
+
+    /** Optional — number of expected attendees. 0 means not specified. */
+    int attendees
 
 ) {}

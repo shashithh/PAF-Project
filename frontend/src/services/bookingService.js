@@ -78,11 +78,11 @@ export async function cancelBooking(id, userId) {
 }
 
 /** PATCH /api/bookings/{id}/status */
-export async function updateBookingStatus(id, status) {
+export async function updateBookingStatus(id, status, reason = null) {
   const res = await fetch(`/api/bookings/${id}/status`, {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ status }),
+    body:    JSON.stringify({ status, reason }),
   })
   if (!res.ok) throw new Error(await parseError(res))
   return res.json()

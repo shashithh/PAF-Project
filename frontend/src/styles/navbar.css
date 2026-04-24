@@ -1,28 +1,115 @@
-﻿/* Navbar */
-.navbar { display:flex; align-items:center; gap:1rem; padding:0 2rem; height:60px; background:var(--bg); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
-.nav-brand { display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:1rem; color:var(--text); text-decoration:none; margin-right:auto; }
-.nav-logo { width:30px; height:30px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.85rem; flex-shrink:0; }
-.nav-links { display:flex; gap:.2rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); padding:.28rem; }
-.nav-link { padding:.38rem .9rem; border:none; border-radius:var(--radius-pill); background:transparent; color:var(--muted); font-size:.875rem; font-weight:500; cursor:pointer; text-decoration:none; transition:all var(--t-fast); white-space:nowrap; }
-.nav-link:hover { color:var(--text); background:var(--surface-2); }
-.nav-link.active { background:var(--surface-2); color:var(--text); font-weight:600; }
-.nav-link-admin.active { background:#fff8e1; color:#7c5c00; }
-.nav-user { display:flex; align-items:center; margin-left:.5rem; position:relative; }
-.nav-user-btn { display:flex; align-items:center; gap:.4rem; padding:.28rem .65rem .28rem .28rem; border:1px solid var(--border); border-radius:var(--radius-pill); background:var(--surface); cursor:pointer; transition:all var(--t-fast); }
-.nav-user-btn:hover { border-color:var(--green); box-shadow:0 0 0 3px rgba(61,90,62,.1); }
-.nav-avatar { width:26px; height:26px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.78rem; flex-shrink:0; }
-.nav-uname { font-size:.84rem; font-weight:600; color:var(--text); }
-.nav-role { padding:.12rem .45rem; border-radius:var(--radius-pill); font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-.nav-role-user  { background:var(--green-light); color:var(--green); }
-.nav-role-admin { background:#fff8e1; color:#7c5c00; }
-.nav-chevron { font-size:.6rem; color:var(--muted); }
-.nav-dropdown { position:absolute; top:calc(100% + .5rem); right:0; min-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); list-style:none; padding:.35rem; z-index:200; animation:ddFade .15s ease both; }
-@keyframes ddFade { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
-.nav-dd-item { display:flex; align-items:center; gap:.55rem; width:100%; padding:.45rem .65rem; border:none; border-radius:var(--radius-sm); background:transparent; cursor:pointer; text-align:left; transition:background var(--t-fast); }
-.nav-dd-item:hover { background:var(--surface-2); }
-.nav-dd-item.active { background:var(--green-light); }
-.nav-dd-avatar { width:24px; height:24px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; flex-shrink:0; }
-.nav-dd-name { font-size:.84rem; font-weight:600; color:var(--text); }
-.nav-dd-role { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
-.nav-dd-check { color:var(--green); font-weight:700; margin-left:auto; }
-@media(max-width:640px){ .navbar{padding:0 1rem;} .nav-uname{display:none;} .nav-link{padding:.32rem .65rem;font-size:.8rem;} }
+﻿/* ── Navbar ── */
+.navbar {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0 2.5rem; height: var(--nav-h);
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+  transition: box-shadow var(--t);
+}
+.navbar.scrolled { box-shadow: var(--shadow-sm); }
+
+/* Brand */
+.nav-brand {
+  display: flex; align-items: center; gap: .6rem;
+  font-weight: 800; font-size: 1.05rem; color: var(--text);
+  text-decoration: none; margin-right: auto; cursor: pointer;
+  border: none; background: none; padding: 0;
+  transition: opacity var(--t-fast);
+}
+.nav-brand:hover { opacity: .8; }
+.nav-logo {
+  width: 34px; height: 34px; border-radius: var(--radius-sm);
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,.35);
+  transition: box-shadow var(--t-fast), transform var(--t-fast);
+}
+.nav-brand:hover .nav-logo {
+  box-shadow: 0 4px 16px rgba(37,99,235,.5);
+  transform: scale(1.05);
+}
+
+/* Links pill */
+.nav-links {
+  display: flex; gap: .15rem;
+  background: var(--bg-muted); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: .25rem;
+}
+.nav-link {
+  padding: .38rem 1rem; border: none; border-radius: var(--radius-pill);
+  background: transparent; color: var(--muted);
+  font-size: .875rem; font-weight: 500; cursor: pointer;
+  text-decoration: none; transition: all var(--t-fast); white-space: nowrap;
+  display: flex; align-items: center; gap: .35rem;
+}
+.nav-link:hover { color: var(--text); background: var(--surface); text-decoration: none; }
+.nav-link.active {
+  background: var(--surface); color: var(--text); font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+.nav-link-admin.active { background: var(--amber-light); color: #92400e; }
+
+/* User pill */
+.nav-user { display: flex; align-items: center; margin-left: .5rem; position: relative; }
+.nav-user-btn {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .28rem .75rem .28rem .28rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-pill);
+  background: var(--surface); cursor: pointer;
+  transition: all var(--t-fast);
+}
+.nav-user-btn:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+}
+.nav-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .78rem; flex-shrink: 0;
+}
+.nav-uname { font-size: .84rem; font-weight: 600; color: var(--text); }
+.nav-role {
+  padding: .1rem .45rem; border-radius: var(--radius-pill);
+  font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+}
+.nav-role-user  { background: var(--primary-light); color: var(--primary); }
+.nav-role-admin { background: var(--amber-light); color: #92400e; }
+.nav-chevron { color: var(--muted-2); transition: transform var(--t-fast); display: flex; }
+.nav-user-btn[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
+
+/* Dropdown */
+.nav-dropdown {
+  position: absolute; top: calc(100% + .6rem); right: 0;
+  min-width: 210px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); list-style: none; padding: .4rem; z-index: 300;
+  animation: slideDown .15s ease both;
+}
+.nav-dd-item {
+  display: flex; align-items: center; gap: .55rem; width: 100%;
+  padding: .5rem .7rem; border: none; border-radius: var(--radius-sm);
+  background: transparent; cursor: pointer; text-align: left;
+  transition: background var(--t-fast);
+}
+.nav-dd-item:hover { background: var(--bg-muted); }
+.nav-dd-item.active { background: var(--primary-light); }
+.nav-dd-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; flex-shrink: 0;
+}
+.nav-dd-name { font-size: .84rem; font-weight: 600; color: var(--text); display: block; }
+.nav-dd-role { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); display: block; }
+.nav-dd-check { color: var(--primary); margin-left: auto; display: flex; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .navbar { padding: 0 1rem; }
+  .nav-uname { display: none; }
+  .nav-link { padding: .35rem .65rem; font-size: .8rem; }
+  .nav-links { gap: 0; }
+}

@@ -24,7 +24,25 @@ public class BookingService {
 
     // ── Queries ───────────────────────────────────────────────
 
-    public List<Booking> findAll() {
+    /** Return all bookings, optionally filtered by status / userId / resourceId / date. */
+    public List<Booking> findAll(BookingStatus status, String userId,
+                                 String resourceId, LocalDate date) {
+        // userId + status combo
+        if (userId != null && status != null)
+            return repo.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
+
+        if (userId != null)
+            return repo.findByUserIdOrderByCreatedAtDesc(userId);
+
+        if (status != null)
+            return repo.findByStatusOrderByCreatedAtDesc(status);
+
+        if (resourceId != null)
+            return repo.findByResourceIdOrderByCreatedAtDesc(resourceId);
+
+        if (date != null)
+            return repo.findByDateOrderByCreatedAtDesc(date);
+
         return repo.findAll();
     }
 
@@ -42,7 +60,6 @@ public class BookingService {
         List<Booking> hits = repo.findConflicting(
             req.resourceId(), req.date(), req.startTime(), req.endTime()
         );
-        // Filter out the booking being edited (excludeId)
         return hits.stream()
             .filter(b -> req.excludeId() == null || !req.excludeId().equals(b.getId()))
             .findFirst()
@@ -56,6 +73,7 @@ public class BookingService {
     // ── Mutations ─────────────────────────────────────────────
 
     public Booking create(BookingRequest req) {
+        // Conflict check
         ConflictCheckRequest check = new ConflictCheckRequest(
             req.resourceId(), req.date(), req.startTime(), req.endTime(), null
         );
@@ -77,6 +95,7 @@ public class BookingService {
         b.setStartTime(req.startTime());
         b.setEndTime(req.endTime());
         b.setPurpose(req.purpose());
+        b.setAttendees(req.attendees());
         return repo.save(b);
     }
 
@@ -98,7 +117,7 @@ public class BookingService {
         return repo.save(b);
     }
 
-    public Booking updateStatus(String id, BookingStatus status) {
+    public Booking updateStatus(String id, BookingStatus status, String reason) {
         Booking b = repo.findById(id)
             .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
 
@@ -108,6 +127,7 @@ public class BookingService {
                     throw new InvalidTransitionException(
                         "Cannot approve a booking with status '%s'.".formatted(b.getStatus()));
 
+                // Re-check conflicts at approval time (another booking may have been approved since)
                 ConflictCheckRequest check = new ConflictCheckRequest(
                     b.getResourceId(), b.getDate(), b.getStartTime(), b.getEndTime(), id
                 );
@@ -120,6 +140,9 @@ public class BookingService {
                 if (!REJECTABLE.contains(b.getStatus()))
                     throw new InvalidTransitionException(
                         "Cannot reject a booking with status '%s'.".formatted(b.getStatus()));
+                // Store the admin's reason
+                if (reason != null && !reason.isBlank())
+                    b.setRejectionReason(reason.trim());
             }
             case CANCELLED ->
                 throw new InvalidTransitionException("Use the cancel endpoint to cancel a booking.");

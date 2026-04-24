@@ -50,6 +50,26 @@
       <optional>true</optional>
     </dependency>
 
+    <!--
+      Lombok — used by Module A (facilities).
+      Already added here so the merged project compiles without changes.
+      Module B code does NOT use Lombok annotations, so adding it is safe and harmless.
+    -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Spring Security — used by Module A's SecurityConfig. -->
+    <!-- Adding it now so the merged project compiles without changes. -->
+    <!-- Module B endpoints are currently open; after merge they will be -->
+    <!-- protected by Module A's SecurityConfig (HTTP Basic Auth). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
