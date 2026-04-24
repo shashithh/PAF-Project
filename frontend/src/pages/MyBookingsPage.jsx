@@ -1,211 +1,139 @@
 import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlusCircle, Eye, X, ChevronDown } from 'lucide-react'
+import { CalendarDays, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBookingContext } from '../context/BookingContext.jsx'
 
-const STATUS_OPTS = ['All', 'Pending', 'Approved', 'Rejected', 'Cancelled']
+const STATUSES = ['', 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
 
-const fmtDate = d => {
-  if (!d) return ''
-  const dt = new Date(d + 'T00:00:00')
-  return dt.toISOString().split('T')[0]   // YYYY-MM-DD like the screenshot
-}
-const fmtTime = t => t ? t.slice(0, 5) : ''
+const statusBadge = s => ({
+  APPROVED: 'badge-green', PENDING: 'badge-warn',
+  REJECTED: 'badge-red', CANCELLED: 'badge-gray',
+}[s] || 'badge-gray')
+
+const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 export default function MyBookingsPage() {
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
-  const { bookings, loading, cancelBooking } = useBookingContext()
-  const [filter, setFilter]         = useState('All')
+  const { currentUser, isAdmin } = useAuth()
+  const { bookings, loading, cancelBooking, updateBookingStatus } = useBookingContext()
+  const [status, setStatus] = useState('')
   const [confirming, setConfirming] = useState(null)
-  const [dropOpen, setDropOpen]     = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [showReject, setShowReject] = useState(false)
 
-  const mine = useMemo(() =>
-    bookings.filter(b => b.userId === currentUser?.id),
-    [bookings, currentUser]
-  )
-
-  const displayed = useMemo(() =>
-    filter === 'All' ? mine : mine.filter(b => b.status === filter.toUpperCase()),
-    [mine, filter]
-  )
+  const displayed = useMemo(() => {
+    const list = isAdmin ? bookings : bookings.filter(b => b.userId === currentUser?.id)
+    return status ? list.filter(b => b.status === status) : list
+  }, [bookings, currentUser, isAdmin, status])
 
   const handleCancel = async (id) => {
     await cancelBooking(id, currentUser.id)
     setConfirming(null)
   }
 
+  const handleReview = async (id, approved, reason = '') => {
+    await updateBookingStatus(id, approved ? 'APPROVED' : 'REJECTED', reason || null)
+    setSelected(null)
+    setShowReject(false)
+    setRejectReason('')
+  }
+
   return (
-    <div style={{ maxWidth: 960, animation: 'fadeUp .3s ease both' }}>
-
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'1.5rem', flexWrap:'wrap', gap:'1rem' }}>
+    <div>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'var(--text)', marginBottom:'.2rem' }}>My bookings</h1>
-          <p style={{ fontSize:'.875rem', color:'var(--muted)' }}>Track and manage your booking requests.</p>
+          <h1 className="page-title">📅 Bookings</h1>
+          <p style={{ color: 'var(--text-2)', marginTop: 4 }}>
+            {isAdmin ? 'Manage all booking requests' : 'Your booking history'}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/new-booking')}>
-          <PlusCircle size={15} strokeWidth={2.5} />
-          New booking
+        <button className="btn btn-primary" onClick={() => navigate('/book')}>
+          <CalendarDays size={16} /> New Booking
         </button>
       </div>
 
-      {/* Filter dropdown — matches screenshot style */}
-      <div style={{ marginBottom:'1.25rem', position:'relative', display:'inline-block' }}>
-        <button
-          onClick={() => setDropOpen(o => !o)}
-          style={{
-            display:'flex', alignItems:'center', gap:'.5rem',
-            padding:'.5rem 1rem', background:'var(--bg-card)',
-            border:'1px solid var(--border)', borderRadius:'var(--radius-sm)',
-            fontSize:'.875rem', fontWeight:500, color:'var(--text)',
-            cursor:'pointer', minWidth:120,
-          }}
-        >
-          {filter} ({filter === 'All' ? mine.length : displayed.length})
-          <ChevronDown size={14} strokeWidth={2} style={{ marginLeft:'auto' }} />
-        </button>
-        {dropOpen && (
-          <div style={{
-            position:'absolute', top:'calc(100% + 4px)', left:0,
-            background:'var(--bg-card)', border:'1px solid var(--border)',
-            borderRadius:'var(--radius-sm)', boxShadow:'var(--shadow-md)',
-            zIndex:100, minWidth:160, padding:'.3rem',
-            animation:'slideDown .15s ease both',
-          }}>
-            {STATUS_OPTS.map(s => (
-              <button
-                key={s}
-                onClick={() => { setFilter(s); setDropOpen(false) }}
-                style={{
-                  display:'block', width:'100%', textAlign:'left',
-                  padding:'.45rem .75rem', border:'none', borderRadius:'var(--radius-xs)',
-                  background: s === filter ? 'var(--primary-light)' : 'transparent',
-                  color: s === filter ? 'var(--primary)' : 'var(--text)',
-                  fontSize:'.875rem', fontWeight: s === filter ? 600 : 400,
-                  cursor:'pointer',
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Status filter */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {STATUSES.map(s => (
+          <button
+            key={s}
+            onClick={() => setStatus(s)}
+            className={`btn btn-sm ${status === s ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {s || 'All'}
+          </button>
+        ))}
       </div>
 
-      {/* Table card */}
-      <div className="card" style={{ overflow:'hidden' }}>
-        {loading ? (
-          <div style={{ padding:'3rem', textAlign:'center', color:'var(--muted)' }}>
-            <div className="spinner-dark" style={{ margin:'0 auto 1rem' }} />
-            Loading bookings…
-          </div>
-        ) : displayed.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <CalendarDays size={22} strokeWidth={1.5} />
-            </div>
-            <p className="empty-title">No {filter.toLowerCase()} bookings</p>
-            <p style={{ fontSize:'.875rem', color:'var(--muted)', marginTop:'.25rem' }}>
-              {filter === 'All' ? 'Make your first booking to get started.' : `No ${filter.toLowerCase()} bookings to show.`}
-            </p>
-            {filter === 'All' && (
-              <button className="btn btn-primary" style={{ marginTop:'1rem' }} onClick={() => navigate('/book')}>
-                Browse resources
-              </button>
-            )}
-          </div>
-        ) : (
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+      {loading ? <div className="spinner" /> : (
+        <div className="table-wrap">
+          <table>
             <thead>
-              <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-muted)' }}>
-                {['Resource', 'Date / Time', 'Purpose', 'Status', ''].map(h => (
-                  <th key={h} style={{
-                    padding:'.75rem 1.1rem', textAlign:'left',
-                    fontSize:'.72rem', fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'.07em', color:'var(--muted)',
-                  }}>{h}</th>
-                ))}
+              <tr>
+                <th>#</th>
+                {isAdmin && <th>User</th>}
+                <th>Resource</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Purpose</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {displayed.map((b, i) => (
-                <tr
-                  key={b.id}
-                  style={{
-                    borderBottom: i < displayed.length - 1 ? '1px solid var(--border-2)' : 'none',
-                    transition:'background var(--t-fast)',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-muted)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  {/* Resource */}
-                  <td style={{ padding:'.9rem 1.1rem', fontWeight:600, color:'var(--text)', fontSize:'.9rem' }}>
-                    {b.resourceName}
+              {displayed.length === 0 ? (
+                <tr>
+                  <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 40 }}>
+                    No bookings found
                   </td>
-
-                  {/* Date / Time */}
-                  <td style={{ padding:'.9rem 1.1rem' }}>
-                    <div style={{ fontWeight:600, color:'var(--text)', fontSize:'.875rem' }}>{fmtDate(b.date)}</div>
-                    <div style={{ fontSize:'.8rem', color:'var(--muted)', marginTop:'.1rem' }}>
-                      {fmtTime(b.startTime)}–{fmtTime(b.endTime)}
-                    </div>
+                </tr>
+              ) : displayed.map(b => (
+                <tr key={b.id}>
+                  <td style={{ color: 'var(--text-3)', fontSize: '0.78rem', fontFamily: 'monospace' }}>
+                    #{b.id?.slice(-6)}
                   </td>
-
-                  {/* Purpose */}
-                  <td style={{ padding:'.9rem 1.1rem', color:'var(--text-2)', fontSize:'.875rem', maxWidth:200 }}>
-                    <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {b.purpose || '—'}
-                    </div>
+                  {isAdmin && <td style={{ fontWeight: 600 }}>{b.userName}</td>}
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{b.resourceName}</div>
                   </td>
-
-                  {/* Status */}
-                  <td style={{ padding:'.9rem 1.1rem' }}>
-                    <span className={`badge badge-${b.status.toLowerCase()}`}>
-                      {b.status.charAt(0) + b.status.slice(1).toLowerCase()}
-                    </span>
+                  <td>{fmtDate(b.date)}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                    {b.startTime?.slice(0,5)} – {b.endTime?.slice(0,5)}
                   </td>
-
-                  {/* Actions */}
-                  <td style={{ padding:'.9rem 1.1rem', textAlign:'right' }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'.4rem' }}>
-                      <button
-                        onClick={() => navigate(`/book/${b.resourceId}`)}
-                        style={{
-                          display:'flex', alignItems:'center', gap:'.3rem',
-                          padding:'.3rem .75rem', border:'none', borderRadius:'var(--radius-xs)',
-                          background:'none', color:'var(--primary)', fontSize:'.82rem',
-                          fontWeight:600, cursor:'pointer', transition:'all var(--t-fast)',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
+                  <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {b.purpose}
+                  </td>
+                  <td>
+                    <span className={`badge ${statusBadge(b.status)}`}>{b.status}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setSelected(b)}>
                         View
                       </button>
-
                       {(b.status === 'PENDING' || b.status === 'APPROVED') && (
                         confirming === b.id ? (
-                          <div style={{ display:'flex', alignItems:'center', gap:'.35rem' }}>
-                            <span style={{ fontSize:'.78rem', color:'var(--muted)' }}>Cancel?</span>
-                            <button className="btn btn-danger btn-sm" onClick={() => handleCancel(b.id)}>Yes</button>
+                          <>
+                            <button className="btn btn-sm" style={{ background: 'var(--danger)', color: '#fff' }}
+                              onClick={() => handleCancel(b.id)}>Yes</button>
                             <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(null)}>No</button>
-                          </div>
+                          </>
                         ) : (
-                          <button
-                            onClick={() => setConfirming(b.id)}
-                            style={{
-                              display:'flex', alignItems:'center', gap:'.3rem',
-                              padding:'.3rem .6rem', border:'none', borderRadius:'var(--radius-xs)',
-                              background:'none', color:'var(--muted)', fontSize:'.82rem',
-                              cursor:'pointer', transition:'all var(--t-fast)',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color='var(--red)'; e.currentTarget.style.background='var(--red-light)' }}
-                            onMouseLeave={e => { e.currentTarget.style.color='var(--muted)'; e.currentTarget.style.background='none' }}
-                          >
-                            <X size={13} strokeWidth={2.5} />
+                          <button className="btn btn-sm" style={{ background: 'var(--danger)', color: '#fff' }}
+                            onClick={() => setConfirming(b.id)}>
+                            Cancel
                           </button>
                         )
+                      )}
+                      {isAdmin && b.status === 'PENDING' && (
+                        <>
+                          <button className="btn btn-sm btn-accent"
+                            onClick={() => handleReview(b.id, true)}>✓</button>
+                          <button className="btn btn-sm btn-danger"
+                            onClick={() => { setSelected(b); setShowReject(true) }}>✗</button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -213,8 +141,67 @@ export default function MyBookingsPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {selected && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSelected(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem' }}>Booking #{selected.id?.slice(-6)}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(null); setShowReject(false); setRejectReason('') }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className={`badge ${statusBadge(selected.status)}`}>{selected.status}</span>
+              </div>
+
+              {[
+                { label: 'Resource',   value: selected.resourceName },
+                { label: 'Requested by', value: selected.userName },
+                { label: 'Date',       value: fmtDate(selected.date) },
+                { label: 'Time',       value: `${selected.startTime?.slice(0,5)} – ${selected.endTime?.slice(0,5)}` },
+                { label: 'Purpose',    value: selected.purpose },
+                { label: 'Attendees',  value: selected.attendees || '—' },
+                ...(selected.rejectionReason ? [{ label: 'Rejection reason', value: selected.rejectionReason }] : []),
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: 'flex', gap: 12, fontSize: '0.875rem' }}>
+                  <div style={{ width: 130, color: 'var(--text-3)', flexShrink: 0 }}>{label}</div>
+                  <div style={{ fontWeight: 500 }}>{value}</div>
+                </div>
+              ))}
+
+              {isAdmin && selected.status === 'PENDING' && (
+                <div style={{ marginTop: 8 }}>
+                  {showReject ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <textarea rows={2} placeholder="Reason for rejection…"
+                        value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-ghost" onClick={() => setShowReject(false)}>Back</button>
+                        <button className="btn btn-danger" onClick={() => handleReview(selected.id, false, rejectReason)}>
+                          Confirm Reject
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-accent" onClick={() => handleReview(selected.id, true)}>
+                        ✓ Approve
+                      </button>
+                      <button className="btn btn-danger" onClick={() => setShowReject(true)}>
+                        ✗ Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

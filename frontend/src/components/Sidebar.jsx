@@ -2,38 +2,28 @@ import React, { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, CalendarDays, Wrench,
-  Bell, ShieldCheck, ChevronLeft, LogOut, BookOpen
+  Bell, ShieldCheck, LogOut, Sun, Moon, User, ChevronLeft
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useTheme } from '../context/ThemeContext.jsx'
 import { mockUsers } from '../data/mockBookings.js'
 import '../styles/sidebar.css'
 
-const NAV = [
-  {
-    section: 'Main',
-    items: [
-      { to: '/',      label: 'Dashboard',  Icon: LayoutDashboard, live: true, end: true },
-      { to: '/book',  label: 'Facilities', Icon: Building2,        live: true },
-    ],
-  },
-  {
-    section: 'Modules',
-    items: [
-      { to: '/bookings', label: 'Bookings',      sub: 'Management',         Icon: CalendarDays, live: true  },
-      { to: '/tickets',  label: 'Tickets',       sub: null,                 Icon: Wrench,       live: false },
-      { to: '/notifs',   label: 'Notifications', sub: null,                 Icon: Bell,         live: false },
-    ],
-  },
-  {
-    section: 'Account',
-    items: [
-      { to: '/settings', label: 'Settings', Icon: ShieldCheck, live: false },
-    ],
-  },
+const NAV_MAIN = [
+  { to: '/',         label: 'Dashboard',  Icon: LayoutDashboard, end: true },
+  { to: '/book',     label: 'Resources',  Icon: Building2 },
+  { to: '/bookings', label: 'Bookings',   Icon: CalendarDays },
+  { to: '/tickets',  label: 'Tickets',    Icon: Wrench,       soon: true },
+  { to: '/notifs',   label: 'Notifications', Icon: Bell,      soon: true },
+]
+
+const NAV_ADMIN = [
+  { to: '/admin', label: 'Admin Panel', Icon: ShieldCheck },
 ]
 
 export default function Sidebar() {
   const { currentUser, isAdmin, login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
@@ -44,77 +34,63 @@ export default function Sidebar() {
 
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
-          <BookOpen size={17} color="#fff" strokeWidth={2.5} />
-        </div>
+        <div className="sidebar-logo-icon">🏫</div>
         {!collapsed && (
-          <div className="sidebar-logo-text">
-            <div className="sidebar-logo-name">CampusBook</div>
-            <div className="sidebar-logo-sub">Smart Campus Hub</div>
-          </div>
+          <>
+            <div>
+              <div className="sidebar-logo-name">Smart Campus</div>
+              <div className="sidebar-logo-sub">Operations Hub</div>
+            </div>
+            <button className="theme-btn" onClick={toggleTheme} title="Toggle theme">
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </>
         )}
       </div>
 
       {/* Nav */}
       <nav className="sidebar-nav">
-        {NAV.map(({ section, items }) => (
-          <div key={section} className="sidebar-section">
-            {!collapsed && <div className="sidebar-section-label">{section}</div>}
-            <div className="sidebar-items">
-              {items.map(({ to, label, sub, Icon, live, end }) =>
-                live ? (
-                  <NavLink
-                    key={to} to={to} end={end}
-                    className={({ isActive }) =>
-                      `sidebar-item${isActive ? ' active' : ''}`
-                    }
-                  >
-                    <span className="sidebar-item-icon"><Icon size={18} strokeWidth={1.8} /></span>
-                    {!collapsed && (
-                      <span className="sidebar-item-text">
-                        <span className="sidebar-item-name">{label}</span>
-                        {sub && <span className="sidebar-item-sub">{sub}</span>}
-                      </span>
-                    )}
-                  </NavLink>
-                ) : (
-                  <div key={to} className="sidebar-item disabled">
-                    <span className="sidebar-item-icon"><Icon size={18} strokeWidth={1.8} /></span>
-                    {!collapsed && (
-                      <span className="sidebar-item-text">
-                        <span className="sidebar-item-name">{label}</span>
-                        {sub && <span className="sidebar-item-sub">{sub}</span>}
-                      </span>
-                    )}
-                    {!collapsed && <span className="sidebar-soon">Soon</span>}
-                  </div>
-                )
-              )}
+        <div className="sidebar-section-label">Main Menu</div>
 
-              {/* Admin panel */}
-              {isAdmin && section === 'Modules' && (
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
-                >
-                  <span className="sidebar-item-icon"><ShieldCheck size={18} strokeWidth={1.8} /></span>
-                  {!collapsed && (
-                    <span className="sidebar-item-text">
-                      <span className="sidebar-item-name">Admin Panel</span>
-                    </span>
-                  )}
-                </NavLink>
-              )}
+        {NAV_MAIN.map(({ to, label, Icon, end, soon }) =>
+          soon ? (
+            <div key={to} className="sidebar-item disabled">
+              <Icon size={17} />
+              {!collapsed && <><span style={{ flex: 1 }}>{label}</span><span className="sidebar-soon">Soon</span></>}
             </div>
-          </div>
-        ))}
+          ) : (
+            <NavLink
+              key={to} to={to} end={end}
+              className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
+            >
+              <Icon size={17} />
+              {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
+            </NavLink>
+          )
+        )}
+
+        {isAdmin && (
+          <>
+            <div className="sidebar-section-label mt">Admin Panel</div>
+            {NAV_ADMIN.map(({ to, label, Icon }) => (
+              <NavLink
+                key={to} to={to}
+                className={({ isActive }) => `sidebar-item${isActive ? ' active-admin' : ''}`}
+              >
+                <Icon size={17} />
+                {!collapsed && <span>{label}</span>}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Bottom */}
       <div className="sidebar-bottom">
-        {/* User switcher (dev) */}
+        {/* User switcher */}
         <div style={{ position: 'relative' }}>
           <div
             className="sidebar-user"
@@ -123,78 +99,79 @@ export default function Sidebar() {
           >
             <div className="sidebar-avatar">{initials}</div>
             {!collapsed && (
-              <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="sidebar-user-name">{currentUser.name}</div>
-                <span className={`sidebar-user-role ${currentUser.role.toLowerCase()}`}>
-                  {currentUser.role}
-                </span>
+                <div className="sidebar-user-role">{currentUser.role}</div>
               </div>
             )}
           </div>
 
-          {/* User switcher dropdown */}
           {switcherOpen && (
             <div style={{
               position: 'absolute', bottom: '100%', left: 0, right: 0,
-              background: '#1f3a1f', border: '1px solid rgba(255,255,255,.1)',
-              borderRadius: 'var(--radius-sm)', padding: '.35rem',
-              marginBottom: '.35rem', zIndex: 300,
+              background: 'var(--card)', border: '1px solid var(--card-border)',
+              borderRadius: 'var(--radius)', padding: '6px',
+              marginBottom: '6px', zIndex: 300,
               animation: 'slideDown .15s ease both',
+              boxShadow: 'var(--shadow)',
             }}>
               {mockUsers.map(u => (
                 <button
                   key={u.id}
                   onClick={() => { login(u.id); setSwitcherOpen(false) }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '.55rem',
-                    width: '100%', padding: '.45rem .65rem',
-                    borderRadius: 'var(--radius-xs)', border: 'none',
-                    background: u.id === currentUser.id ? 'rgba(5,150,105,.2)' : 'transparent',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '8px 10px',
+                    borderRadius: 6, border: 'none',
+                    background: u.id === currentUser.id ? 'var(--primary-glow)' : 'transparent',
                     cursor: 'pointer', textAlign: 'left',
-                    transition: 'background var(--t-fast)',
+                    transition: 'background 0.15s',
                   }}
-                  onMouseEnter={e => { if (u.id !== currentUser.id) e.currentTarget.style.background = 'rgba(255,255,255,.07)' }}
+                  onMouseEnter={e => { if (u.id !== currentUser.id) e.currentTarget.style.background = 'var(--bg-3)' }}
                   onMouseLeave={e => { if (u.id !== currentUser.id) e.currentTarget.style.background = 'transparent' }}
                 >
                   <div style={{
-                    width: 24, height: 24, borderRadius: 4, flexShrink: 0,
-                    background: 'linear-gradient(135deg, #059669, #0d9488)',
+                    width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '.68rem', fontWeight: 700, color: '#fff',
-                  }}>
-                    {u.name[0]}
+                    fontSize: '0.72rem', fontWeight: 700, color: '#fff',
+                  }}>{u.name[0]}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{u.name}</div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', textTransform: 'uppercase' }}>{u.role}</div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '.8rem', fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>{u.name}</div>
-                    <div style={{ fontSize: '.65rem', color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{u.role}</div>
-                  </div>
-                  {u.id === currentUser.id && (
-                    <span style={{ marginLeft: 'auto', color: '#6ee7b7', fontSize: '.75rem' }}>✓</span>
-                  )}
+                  {u.id === currentUser.id && <span style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>✓</span>}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Sign out */}
+        {/* Logout */}
         <button
-          className="sidebar-collapse-btn"
+          className="btn btn-ghost"
+          style={{ width: '100%', justifyContent: 'center', fontSize: '0.875rem' }}
           onClick={() => navigate('/')}
-          style={{ color: 'rgba(255,255,255,.35)', gap: '.5rem' }}
         >
-          <LogOut size={14} strokeWidth={2} />
-          {!collapsed && <span>Sign out</span>}
+          <LogOut size={15} />
+          {!collapsed && 'Logout'}
         </button>
 
-        {/* Collapse toggle */}
-        <button className="sidebar-collapse-btn" onClick={() => setCollapsed(o => !o)}>
-          <ChevronLeft
-            size={15} strokeWidth={2}
-            className="sidebar-collapse-icon"
-            style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}
-          />
-          {!collapsed && <span>Collapse</span>}
+        {/* Collapse */}
+        <button
+          onClick={() => setCollapsed(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', padding: '6px', borderRadius: 6,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-3)', fontSize: '0.75rem', fontWeight: 600,
+            transition: 'all 0.15s', marginTop: 4,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-3)' }}
+        >
+          <ChevronLeft size={14} style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }} />
+          {!collapsed && 'Collapse'}
         </button>
       </div>
     </aside>
