@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-surface-muted; }
+  ::-webkit-scrollbar-thumb { @apply bg-surface-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-ink-muted; }
+
+  * { @apply box-border; }
+}
+
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-surface-card border border-surface-border rounded-2xl shadow-card;
+  }
+  .card-hover {
+    @apply card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800
+           text-white font-semibold px-5 py-2.5 rounded-xl
+           transition-all duration-200 shadow-sm hover:shadow-md
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
+  }
+  .btn-secondary {
+    @apply bg-surface-card hover:bg-surface-muted
+           text-ink-secondary hover:text-ink font-semibold px-5 py-2.5 rounded-xl
+           border border-surface-border transition-all duration-200 shadow-sm
+           focus:outline-none focus:ring-2 focus:ring-surface-border focus:ring-offset-2;
+  }
+  .btn-danger {
+    @apply bg-rose-50 hover:bg-rose-100
+           text-rose-600 hover:text-rose-700 font-semibold px-5 py-2.5 rounded-xl
+           border border-rose-200 transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2;
+  }
+  .btn-icon {
+    @apply p-2 rounded-xl hover:bg-surface-hover text-ink-secondary hover:text-ink
+           transition-all duration-150 focus:outline-none;
+  }
+
+  /* Form elements */
+  .input {
+    @apply w-full bg-surface border border-surface-border text-ink rounded-xl px-4 py-2.5
+           placeholder-ink-muted transition-all duration-200 text-sm
+           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400
+           hover:border-ink-muted;
+  }
+  .input-error {
+    @apply border-rose-400 focus:ring-rose-400 focus:border-rose-400;
+  }
+  .label {
+    @apply block text-sm font-semibold text-ink-secondary mb-1.5;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border;
+  }
+
+  /* Section heading */
+  .section-title {
+    @apply text-xs font-bold text-ink-muted uppercase tracking-widest;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-surface-border;
+  }
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: slideUp 0.35s ease-out both;
+}
+
+/* Number accent */
+.stat-number {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+}

@@ -1,0 +1,67 @@
+package com.smartcampus.facilities.security;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final JwtAuthFilter jwtAuthFilter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers("/", "/login", "/error", "/auth/callback").permitAll()
+                        // Admin only endpoints
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN")
+
+                        // User and Admin endpoints
+                        .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
+                        // Technician endpoints
+                        .requestMatchers("/api/technician/**").hasAnyRole("TECHNICIAN", "ADMIN")
+                        // All other endpoints need authentication
+                        .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oAuth2LoginSuccessHandler)
+                        .failureUrl("/login?error")
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .logout(logout -> logout
+                        .logoutSuccessUrl("http://localhost:5173/login") // redirect to frontend login page
+                        .permitAll()
+                );
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        return source -> {
+            UrlBasedCorsConfigurationSource urlSource = new UrlBasedCorsConfigurationSource();
+            urlSource.registerCorsConfiguration("/**", configuration);
+            return urlSource.getCorsConfiguration(source);
+        };
+    }
+}
