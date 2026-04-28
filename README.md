@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🏛️ Smart Campus Operations Hub
 
 ## 📋 Project Description
