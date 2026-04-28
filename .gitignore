@@ -1,0 +1,7 @@
+.env
+*.env
+smart-campus/backend/.env
+node_modules/
+target/
+uploads/
+.DS_Store
